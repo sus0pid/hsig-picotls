@@ -2316,7 +2316,7 @@ Exit:
 static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_handshake_properties_t *properties,
                              ptls_iovec_t *cookie)
 {
-    uint64_t start_cchlo, end_cchlo;
+    uint64_t start_cchlo, end_cchlo, start_keygen, end_keygen;
     //// start measuring cycles for client side clienthello
     start_cchlo = rdtsc();
 
@@ -2418,12 +2418,14 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
         !(properties != NULL && properties->client.negotiate_before_key_exchange))
         tls->key_share = tls->ctx->key_exchanges[0];
 
+    start_keygen = rdtsc();
     /* instantiate key share context */
     assert(tls->client.key_share_ctx == NULL);
     if (tls->key_share != NULL) {
         if ((ret = tls->key_share->create(tls->key_share, &tls->client.key_share_ctx)) != 0)
             goto Exit;
     }
+    end_keygen = rdtsc();
 
     /* initialize key schedule */
     if (!is_second_flight) {
@@ -2547,7 +2549,8 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     //// end measuring cycles for client side clienthello
     end_cchlo = rdtsc();
-    printf("CPU cycles for cCHLO: %llu\n", end_cchlo-start_cchlo);
+    printf("CPU cycles for cCHLO: %lu\n", end_cchlo-start_cchlo);
+    printf("CPU cycles for keygen in cCHLO: %lu\n", end_keygen-start_keygen);
 Exit:
     ptls_buffer_dispose(&encoded_ch_inner);
     ptls_clear_memory(binder_key, sizeof(binder_key));
@@ -4270,6 +4273,7 @@ static int certificate_type_exists(uint8_t *list, size_t count, uint8_t desired_
 static int server_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_iovec_t message,
                                ptls_handshake_properties_t *properties)
 {
+    uint64_t start_schlo = rdtsc();
 #define EMIT_SERVER_HELLO(sched, fill_rand, extensions, post_action)                                                               \
     do {                                                                                                                           \
         size_t sh_start_off;                                                                                                       \
