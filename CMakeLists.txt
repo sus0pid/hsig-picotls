@@ -150,6 +150,9 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     TARGET_LINK_LIBRARIES(picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} picotls-core ${CMAKE_DL_LIBS})
     ADD_EXECUTABLE(cli t/cli.c lib/pembase64.c)
     TARGET_LINK_LIBRARIES(cli picotls-openssl picotls-core)
+    ADD_EXECUTABLE(hsbench t/hsbench.c lib/pembase64.c deps/picotest/picotest.c)
+    TARGET_LINK_LIBRARIES(hsbench picotls-openssl picotls-core)
+
 
     ADD_EXECUTABLE(test-openssl.t
         ${MINICRYPTO_LIBRARY_FILES}
@@ -234,6 +237,7 @@ ENDIF ()
 FIND_LIBRARY(LIBC_RESOLV_LIB "resolv")
 IF (OPENSSL_FOUND AND LIBC_RESOLV_LIB)
     TARGET_LINK_LIBRARIES(cli ${LIBC_RESOLV_LIB})
+    TARGET_LINK_LIBRARIES(hsbench ${LIBC_RESOLV_LIB})
 ENDIF ()
 
 IF (BUILD_FUZZER)

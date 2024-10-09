@@ -35,6 +35,7 @@
 #include <sys/time.h>
 #endif
 #include "picotls.h"
+#include "picotls/rdtsc.h"
 #if PICOTLS_USE_DTRACE
 #include "picotls-probes.h"
 #endif
@@ -2315,6 +2316,10 @@ Exit:
 static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_handshake_properties_t *properties,
                              ptls_iovec_t *cookie)
 {
+    uint64_t start_cchlo, end_cchlo;
+    //// start measuring cycles for client side clienthello
+    start_cchlo = rdtsc();
+
     struct {
         ptls_iovec_t secret;
         ptls_iovec_t identity;
@@ -2540,6 +2545,9 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
     tls->state = cookie == NULL ? PTLS_STATE_CLIENT_EXPECT_SERVER_HELLO : PTLS_STATE_CLIENT_EXPECT_SECOND_SERVER_HELLO;
     ret = PTLS_ERROR_IN_PROGRESS;
 
+    //// end measuring cycles for client side clienthello
+    end_cchlo = rdtsc();
+    printf("CPU cycles for cCHLO: %llu\n", end_cchlo-start_cchlo);
 Exit:
     ptls_buffer_dispose(&encoded_ch_inner);
     ptls_clear_memory(binder_key, sizeof(binder_key));
