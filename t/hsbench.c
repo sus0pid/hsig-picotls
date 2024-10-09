@@ -182,7 +182,7 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
     }
 
     consumed = cbuf.off;
-    /*2. server CHLO + SHLO*/
+    /*2. server CHLO + SHLO + EE + CertRequest + Cert + CertVerify*/
     ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
 
     if (require_client_authentication) {
@@ -249,6 +249,7 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
     }
 
     consumed = sbuf.off;
+    /*3. client Cert + CertVerify + Finished*/
     ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
     ok(ret == 0);
     ok(cbuf.off != 0);
@@ -272,8 +273,17 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
     }
 
     if (require_client_authentication) {
+        if (ptls_handshake_is_complete(client))
+            printf(">>Client handshake is complete\n");
+        else
+            printf(">>Client handshake is not complete\n");
+        if (ptls_handshake_is_complete(server))
+            printf(">>Server handshake is complete\n");
+        else
+            printf(">>Server handshake is not complete\n");
         ok(!ptls_handshake_is_complete(server));
         consumed = cbuf.off;
+        /*4. server Finished*/
         ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
         ok(ret == 0);
         ok(ptls_handshake_is_complete(server));
@@ -296,8 +306,8 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
         ok(ptls_handshake_is_complete(server));
         decbuf.off = 0;
         cbuf.off = 0;
-        if (transfer_session)
-            server = clone_tls(original_server);
+//        if (transfer_session)
+//            server = clone_tls(original_server);
 
         ret = ptls_send(server, &sbuf, resp, strlen(resp));
         ok(ret == 0);
