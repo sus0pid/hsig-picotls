@@ -937,7 +937,7 @@ static int do_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme,
 
     ret = 0;
     int64_t end_sign = rdtsc();
-    printf("[%s]: -Signing CPU cycles %lu", __func__ , end_sign-start_sign);
+    printf("[%s]: -Signing CPU cycles %lu\n", __func__ , end_sign-start_sign);
 
 Exit:
     if (ctx != NULL)
