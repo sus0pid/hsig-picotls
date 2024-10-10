@@ -49,6 +49,7 @@
 #include <openssl/x509_vfy.h>
 #include "picotls.h"
 #include "picotls/openssl.h"
+#include "picotls/rdtsc.h"
 #ifdef OPENSSL_IS_BORINGSSL
 #include "./chacha20poly1305.h"
 #endif
@@ -856,6 +857,8 @@ Exit:
 static int do_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                    ptls_async_job_t **async)
 {
+    /*measure the CPU cycles for signing*/
+    int64_t start_sign = rdtsc();
     EVP_MD_CTX *ctx = NULL;
     const EVP_MD *md = scheme->scheme_md != NULL ? scheme->scheme_md() : NULL;
     EVP_PKEY_CTX *pkey_ctx;
@@ -933,6 +936,9 @@ static int do_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme,
     outbuf->off += siglen;
 
     ret = 0;
+    int64_t end_sign = rdtsc();
+    printf("[%s]: -Signing CPU cycles %lu", __func__ , end_sign-start_sign);
+
 Exit:
     if (ctx != NULL)
         EVP_MD_CTX_destroy(ctx);
@@ -1390,6 +1396,8 @@ static X509 *to_x509(ptls_iovec_t vec)
 
 static int verify_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
 {
+    /*measure CPU cycles for signature verification*/
+    uint64_t start_verify = rdtsc();
     EVP_PKEY *key = verify_ctx;
     const ptls_openssl_signature_scheme_t *scheme;
     EVP_MD_CTX *ctx = NULL;
@@ -1459,6 +1467,8 @@ SchemeFound:
     }
 
     ret = 0;
+    uint64_t end_verify = rdtsc();
+    printf("[%s]: -Verify signature CPU cycles %lu\n", __func__, end_verify-start_verify);
 
 Exit:
     if (ctx != NULL)
