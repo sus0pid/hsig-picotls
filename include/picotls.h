@@ -638,7 +638,7 @@ typedef struct st_ptls_message_emitter_t {
     struct st_ptls_traffic_protection_t *enc;
     size_t record_header_length;
     int (*begin_message)(struct st_ptls_message_emitter_t *self);
-    int (*commit_message)(struct st_ptls_message_emitter_t *self);
+    int (*commit_message)(struct st_ptls_message_emitter_t *self); /*record creation and encryption*/
 } ptls_message_emitter_t;
 
 /**
