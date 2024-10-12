@@ -701,23 +701,30 @@ static void build_aad(uint8_t aad[5], size_t reclen)
 static size_t aead_encrypt(struct st_ptls_traffic_protection_t *ctx, void *output, const void *input, size_t inlen,
                            uint8_t content_type)
 {
+    uint64_t start_encrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
+
     ptls_iovec_t invec[2] = {ptls_iovec_init(input, inlen), ptls_iovec_init(&content_type, 1)};
     uint8_t aad[5];
 
     build_aad(aad, inlen + 1 + ctx->aead->algo->tag_size);
     ptls_aead_encrypt_v(ctx->aead, output, invec, PTLS_ELEMENTSOF(invec), ctx->seq++, aad, sizeof(aad));
-
+    uint64_t end_encrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
+    printf("[%s]: -Encrypt handshake message CPU cycles: %lu\n", __func__, end_encrypt_record-start_encrypt_record);
     return inlen + 1 + ctx->aead->algo->tag_size;
 }
 
 static int aead_decrypt(struct st_ptls_traffic_protection_t *ctx, void *output, size_t *outlen, const void *input, size_t inlen)
 {
+    uint64_t start_decrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
+
     uint8_t aad[5];
 
     build_aad(aad, inlen);
     if ((*outlen = ptls_aead_decrypt(ctx->aead, output, input, inlen, ctx->seq, aad, sizeof(aad))) == SIZE_MAX)
         return PTLS_ALERT_BAD_RECORD_MAC;
     ++ctx->seq;
+    uint64_t end_decrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
+    printf("[%s]: -Decrypt handshake message CPU cycles: %lu\n", __func__, end_decrypt_record-start_decrypt_record);
     return 0;
 }
 
@@ -3381,6 +3388,8 @@ Exit:
 
 static int server_handle_certificate(ptls_t *tls, ptls_iovec_t message)
 {
+    uint64_t start_cert = rdtsc(); /*measure server handle cert cpu cycles*/
+
     int got_certs, ret;
 
     if ((ret = handle_certificate(tls, message.base + PTLS_HANDSHAKE_HEADER_SIZE, message.base + message.len, &got_certs)) != 0)
@@ -3394,7 +3403,8 @@ static int server_handle_certificate(ptls_t *tls, ptls_iovec_t message)
         /* Client did not provide certificate, and the verifier says we can fail open. Therefore, the next message is Finished. */
         tls->state = PTLS_STATE_SERVER_EXPECT_FINISHED;
     }
-
+    uint64_t end_cert = rdtsc();
+    printf("[%s]: -Server handle cert CPU cycles: %lu\n", __func__, end_cert-start_cert);
     return PTLS_ERROR_IN_PROGRESS;
 }
 
@@ -3448,13 +3458,16 @@ static int client_handle_certificate_verify(ptls_t *tls, ptls_iovec_t message)
 
 static int server_handle_certificate_verify(ptls_t *tls, ptls_iovec_t message)
 {
+    uint64_t start_certvef = rdtsc(); /*measure certvef cpu cycles*/
+
     int ret = handle_certificate_verify(tls, message, PTLS_CLIENT_CERTIFICATE_VERIFY_CONTEXT_STRING);
 
     if (ret == 0) {
         tls->state = PTLS_STATE_SERVER_EXPECT_FINISHED;
         ret = PTLS_ERROR_IN_PROGRESS;
     }
-
+    uint64_t end_certvef = rdtsc(); /*measure certvef cpu cycles*/
+    printf("[%s]: -Server handle certvef CPU cycles: %lu\n", __func__, end_certvef-start_certvef);
     return ret;
 }
 
@@ -5002,6 +5015,7 @@ Exit:
 
 static int server_handle_finished(ptls_t *tls, ptls_iovec_t message)
 {
+    uint64_t start_fin = rdtsc();/*measure server handle client finished */
     int ret;
 
     if ((ret = verify_finished(tls, message)) != 0)
@@ -5009,12 +5023,16 @@ static int server_handle_finished(ptls_t *tls, ptls_iovec_t message)
 
     memcpy(tls->traffic_protection.dec.secret, tls->server.pending_traffic_secret, sizeof(tls->server.pending_traffic_secret));
     ptls_clear_memory(tls->server.pending_traffic_secret, sizeof(tls->server.pending_traffic_secret));
+    uint64_t start_keyderive = rdtsc(); /*measure server key derivation part3 CPU cycles*/
     if ((ret = setup_traffic_protection(tls, 0, NULL, 3, 0, 0)) != 0)
         return ret;
-
+    uint64_t end_keyderive = rdtsc();
+    printf("[%s]: -Server key derivation (fin) CPU cycles %lu\n", __func__, end_keyderive-start_keyderive);
     ptls__key_schedule_update_hash(tls->key_schedule, message.base, message.len, 0);
 
     tls->state = PTLS_STATE_SERVER_POST_HANDSHAKE;
+    uint64_t end_fin = rdtsc();/*measure server handle client finished */
+    printf("[%s]: -Server handle client finished CPU cycles %lu\n", __func__, end_fin-start_fin);
     return 0;
 }
 
@@ -5916,17 +5934,12 @@ static int handle_input(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_buffe
             return PTLS_ALERT_HANDSHAKE_FAILURE;
         if ((ret = ptls_buffer_reserve(decryptbuf, 5 + rec.length)) != 0)
             return ret;
-        printf("[%s]: decrypt the handshake record start\n", __func__);
-        uint64_t start_decrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
         if ((ret = aead_decrypt(&tls->traffic_protection.dec, decryptbuf->base + decryptbuf->off, &decrypted_length, rec.fragment,
                                 rec.length)) != 0) {
             if (tls->is_server && tls->server.early_data_skipped_bytes != UINT32_MAX)
                 goto ServerSkipEarlyData;
             return ret;
         }
-        uint64_t end_decrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
-        printf("[%s]: decrypt the handshake record end\n", __func__);
-        printf("- Decrypt handshake message CPU cycles: %lu\n", end_decrypt_record-start_decrypt_record);
 
         rec.length = decrypted_length;
         rec.fragment = decryptbuf->base + decryptbuf->off;
