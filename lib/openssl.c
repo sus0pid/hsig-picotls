@@ -1618,6 +1618,7 @@ Exit:
     return ret;
 }
 
+// certificate verification callback function
 static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char *server_name,
                        int (**verifier)(void *, uint16_t, ptls_iovec_t, ptls_iovec_t), void **verify_data, ptls_iovec_t *certs,
                        size_t num_certs)
@@ -1628,28 +1629,32 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
     size_t i;
     int ossl_x509_err, ret;
 
-    /* If any certs are given, convert them to OpenSSL representation, then verify the cert chain. If no certs are given, just give
+    /* If any certs are given, convert them to OpenSSL representation, then verify the cert chain.
+     * If no certs are given, just give
      * the override_callback to see if we want to stay fail open. */
     if (num_certs != 0) {
-        if ((cert = to_x509(certs[0])) == NULL) {
+        printf("Debug info--[%s]: number of certs = %zu\n", __func__, num_certs);
+        if ((cert = to_x509(certs[0])) == NULL) { //cert[0]: peer certificate
             ret = PTLS_ALERT_BAD_CERTIFICATE;
             goto Exit;
         }
         for (i = 1; i != num_certs; ++i) {
-            X509 *interm = to_x509(certs[i]);
+            X509 *interm = to_x509(certs[i]); //cert[i](i>0): intermediate certificate (cert chain)
             if (interm == NULL) {
                 ret = PTLS_ALERT_BAD_CERTIFICATE;
                 goto Exit;
             }
             sk_X509_push(chain, interm);
         }
+        printf("Debug info--[%s]: verify cert chain\n", __func__);
         ret = verify_cert_chain(self->cert_store, cert, chain, ptls_is_server(tls), server_name, &ossl_x509_err);
     } else {
         ret = PTLS_ALERT_CERTIFICATE_REQUIRED;
         ossl_x509_err = 0;
     }
 
-    /* When override callback is available, let it override the error. */
+    /* When override callback is available, let it override the error.
+     * let the handshake continue even if a certificate is not fully trusted.*/
     if (self->override_callback != NULL)
         ret = self->override_callback->cb(self->override_callback, tls, ret, ossl_x509_err, cert, chain);
 
