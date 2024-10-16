@@ -1580,6 +1580,7 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
         }
     }
 
+    uint64_t start_certvef = rdtsc(); // start measuring openssl cert-verify CPU cycles
     if (X509_verify_cert(verify_ctx) != 1) {
         *ossl_x509_err = X509_STORE_CTX_get_error(verify_ctx);
         switch (*ossl_x509_err) {
@@ -1609,6 +1610,8 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
         }
         goto Exit;
     }
+    uint64_t end_certvef = rdtsc(); // start measuring openssl cert-verify CPU cycles
+    printf("[%s]: Openssl Cert-Verification CPU cycles: %lu\n", __func__, end_certvef-start_certvef);
 
     ret = 0;
 
@@ -1638,7 +1641,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
             ret = PTLS_ALERT_BAD_CERTIFICATE;
             goto Exit;
         }
-        for (i = 1; i != num_certs; ++i) {
+        for (i = 1; i != num_certs; ++i) { // no intermediate certificates in the test case, i.e., i==1
             X509 *interm = to_x509(certs[i]); //cert[i](i>0): intermediate certificate (cert chain)
             if (interm == NULL) {
                 ret = PTLS_ALERT_BAD_CERTIFICATE;
