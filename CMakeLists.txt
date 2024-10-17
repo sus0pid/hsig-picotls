@@ -55,6 +55,7 @@ SET(MINICRYPTO_LIBRARY_FILES
 SET(CORE_FILES
     lib/hpke.c
     lib/picotls.c
+    lib/cpu_cycle_logger.c
     lib/pembase64.c)
 SET(CORE_TEST_FILES
     t/hpke.c
@@ -116,7 +117,8 @@ ADD_EXECUTABLE(test-minicrypto.t
     lib/cifra/chacha20.c
     lib/cifra/aes128.c
     lib/cifra/aes256.c
-    lib/cifra/random.c)
+    lib/cifra/random.c
+    lib/cpu_cycle_logger.c)
 SET(TEST_EXES test-minicrypto.t)
 
 
@@ -167,6 +169,7 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
         lib/asn1.c
         lib/pembase64.c
         lib/ffx.c
+        lib/cpu_cycle_logger.c
         deps/picotest/picotest.c
         ${CORE_TEST_FILES}
         t/openssl.c)
