@@ -709,7 +709,8 @@ static size_t aead_encrypt(struct st_ptls_traffic_protection_t *ctx, void *outpu
     build_aad(aad, inlen + 1 + ctx->aead->algo->tag_size);
     ptls_aead_encrypt_v(ctx->aead, output, invec, PTLS_ELEMENTSOF(invec), ctx->seq++, aad, sizeof(aad));
     uint64_t end_encrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
-    printf("[%s]: -Encrypt handshake message CPU cycles: %lu\n", __func__, end_encrypt_record-start_encrypt_record);
+    log_cpu_cycles("EncryptRecord", start_encrypt_record, end_encrypt_record);
+//    printf("[%s]: -Encrypt handshake message CPU cycles: %lu\n", __func__, end_encrypt_record-start_encrypt_record);
     return inlen + 1 + ctx->aead->algo->tag_size;
 }
 
@@ -724,7 +725,8 @@ static int aead_decrypt(struct st_ptls_traffic_protection_t *ctx, void *output, 
         return PTLS_ALERT_BAD_RECORD_MAC;
     ++ctx->seq;
     uint64_t end_decrypt_record = rdtsc(); /*measure handshake message decryption cpu cycles*/
-    printf("[%s]: -Decrypt handshake message CPU cycles: %lu\n", __func__, end_decrypt_record-start_decrypt_record);
+    log_cpu_cycles("DecryteRecord", start_decrypt_record, end_decrypt_record);
+//    printf("[%s]: -Decrypt handshake message CPU cycles: %lu\n", __func__, end_decrypt_record-start_decrypt_record);
     return 0;
 }
 
@@ -1851,6 +1853,7 @@ Exit:
 
 static int send_finished(ptls_t *tls, ptls_message_emitter_t *emitter)
 {
+    uint64_t start_fin = rdtsc();
     int ret;
 
     ptls_push_message(emitter, tls->key_schedule, PTLS_HANDSHAKE_TYPE_FINISHED, {
@@ -1861,7 +1864,8 @@ static int send_finished(ptls_t *tls, ptls_message_emitter_t *emitter)
             goto Exit;
         emitter->buf->off += tls->key_schedule->hashes[0].algo->digest_size;
     });
-
+    uint64_t end_fin = rdtsc();
+    log_cpu_cycles("GenFin-xx-total", start_fin, end_fin);
 Exit:
     return ret;
 }
@@ -2335,6 +2339,7 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 {
     uint64_t start_cchlo, end_cchlo, start_keygen, end_keygen;
     //// start measuring cycles for client side clienthello
+    init_logger();
     start_cchlo = rdtsc();
 
     struct {
@@ -2566,8 +2571,10 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     //// end measuring cycles for client side clienthello
     end_cchlo = rdtsc();
-    printf("CPU cycles for cCHLO: %lu\n", end_cchlo-start_cchlo);
-    printf("CPU cycles for keygen in cCHLO: %lu\n", end_keygen-start_keygen);
+    log_cpu_cycles("ClientHello-client-total", start_cchlo, end_cchlo);
+    log_cpu_cycles("ClientHello-client-keygen", start_keygen, end_keygen);
+//    printf("CPU cycles for cCHLO: %lu\n", end_cchlo-start_cchlo);
+//    printf("CPU cycles for keygen in cCHLO: %lu\n", end_keygen-start_keygen);
 Exit:
     ptls_buffer_dispose(&encoded_ch_inner);
     ptls_clear_memory(binder_key, sizeof(binder_key));
@@ -2812,8 +2819,6 @@ Exit:
 static int client_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_iovec_t message,
                                ptls_handshake_properties_t *properties)
 {
-    /*measure CPU cycles that client spends on SHLO*/
-    uint64_t start_cshlo = rdtsc();
     struct st_ptls_server_hello_t sh;
     ptls_iovec_t ecdh_secret = {NULL};
     int ret;
@@ -2882,7 +2887,8 @@ static int client_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
         if ((ret = tls->client.key_share_ctx->on_exchange(&tls->client.key_share_ctx, 1, &ecdh_secret, sh.peerkey)) != 0)
             goto Exit;
         uint64_t end_keyex = rdtsc();
-        printf("[%s]: -Client key exchange CPU cycles %lu\n", __func__, end_keyex-start_keyex);
+        log_cpu_cycles("HandleHello-client-keyex", start_keyex, end_keyex);
+//        printf("[%s]: -Client key exchange CPU cycles %lu\n", __func__, end_keyex-start_keyex);
     }
 
     uint64_t start_keyderive = rdtsc(); /*measure key derivation for hs message*/
@@ -2905,12 +2911,11 @@ static int client_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
             goto Exit;
     }
     uint64_t end_keyderive = rdtsc();
-    printf("[%s]: -Client derive keys (HS) CPU cycles %lu\n", __func__ , end_keyderive-start_keyderive);
+    log_cpu_cycles("HandleHello-client-keyderive1", start_keyderive, end_keyderive);
+//    printf("[%s]: -Client derive keys (HS) CPU cycles %lu\n", __func__ , end_keyderive-start_keyderive);
 
     tls->state = PTLS_STATE_CLIENT_EXPECT_ENCRYPTED_EXTENSIONS;
     ret = PTLS_ERROR_IN_PROGRESS;
-    uint64_t end_cshlo = rdtsc();
-    printf("[%s]: -Client process SHLO CPU cycles %lu\n", __func__ , end_cshlo-start_cshlo);
 
 Exit:
     if (ecdh_secret.base != NULL) {
@@ -3170,6 +3175,7 @@ static int send_certificate(ptls_t *tls, ptls_message_emitter_t *emitter,
                             struct st_ptls_signature_algorithms_t *signature_algorithms, ptls_iovec_t context,
                             int push_status_request, const uint16_t *compress_algos, size_t num_compress_algos)
 {
+    uint64_t start_cert = rdtsc();/*measure send cert cpu cycles*/
     int ret;
 
     if (signature_algorithms->count == 0) {
@@ -3192,6 +3198,8 @@ static int send_certificate(ptls_t *tls, ptls_message_emitter_t *emitter,
             goto Exit;
         }
     }
+    uint64_t end_cert = rdtsc();
+    log_cpu_cycles("GenCert-xx-total", start_cert, end_cert);
 
 Exit:
     return ret;
@@ -3200,6 +3208,7 @@ Exit:
 static int send_certificate_verify(ptls_t *tls, ptls_message_emitter_t *emitter,
                                    struct st_ptls_signature_algorithms_t *signature_algorithms, const char *context_string)
 {
+    uint64_t start_certvef = rdtsc();
     size_t start_off = emitter->buf->off;
     int ret;
 
@@ -3234,6 +3243,8 @@ static int send_certificate_verify(ptls_t *tls, ptls_message_emitter_t *emitter,
             sendbuf->base[algo_off + 1] = (uint8_t)algo;
         });
     });
+    uint64_t end_certvef = rdtsc();
+    log_cpu_cycles("GenCertVef-xx-total", start_certvef, end_certvef);
 Exit:
     return ret;
 }
@@ -3507,17 +3518,11 @@ static int client_handle_finished(ptls_t *tls, ptls_message_emitter_t *emitter, 
         goto Exit;
 
     if (!alert_ech_required && tls->client.certificate_request.context.base != NULL) {
-        uint64_t start_cert = rdtsc();/*measure client send cert*/
         if ((ret = send_certificate(tls, emitter, &tls->client.certificate_request.signature_algorithms,
                                     tls->client.certificate_request.context, 0, NULL, 0)) == 0)
         {
-            uint64_t end_cert = rdtsc();
-            printf("[%s]: -Client gen Cert CPU cycles %lu\n", __func__, end_cert-start_cert);
-            uint64_t start_certvef = rdtsc(); /*measure client handle certvef*/
             ret = send_certificate_verify(tls, emitter, &tls->client.certificate_request.signature_algorithms,
                                           PTLS_CLIENT_CERTIFICATE_VERIFY_CONTEXT_STRING);
-            uint64_t end_certvef = rdtsc();
-            printf("[%s]: -Client gen CertVef CPU cycles %lu\n", __func__, end_certvef-start_certvef);
         }
 
         free(tls->client.certificate_request.context.base);
@@ -3526,17 +3531,14 @@ static int client_handle_finished(ptls_t *tls, ptls_message_emitter_t *emitter, 
             goto Exit;
     }
 
-    uint64_t start_fin = rdtsc(); /*measure client gen fin*/
     ret = send_finished(tls, emitter);
-    uint64_t end_fin = rdtsc();
-    printf("[%s]: -Client gen Fin CPU cycles %lu\n", __func__, end_fin-start_fin);
 
     start_keyderive_app = rdtsc();
     memcpy(tls->traffic_protection.enc.secret, send_secret, sizeof(send_secret));
     if ((ret = setup_traffic_protection(tls, 1, NULL, 3, 0, 0)) != 0)
         goto Exit;
     uint64_t keyderive_cc = rdtsc() - start_keyderive_app + keyderive_mid;
-    printf("[%s]: -Client Key derivation(App) CPU cycles %lu\n", __func__, keyderive_cc);
+    log_cpu_cycles("HandleFin-client-keyderive2", keyderive_cc, 0); /*provid the exact value instead of start and end*/
 
     tls->state = PTLS_STATE_CLIENT_POST_HANDSHAKE;
 
@@ -5661,21 +5663,31 @@ static int handle_client_handshake_message(ptls_t *tls, ptls_message_emitter_t *
     case PTLS_STATE_CLIENT_EXPECT_SERVER_HELLO:
     case PTLS_STATE_CLIENT_EXPECT_SECOND_SERVER_HELLO:
         if (type == PTLS_HANDSHAKE_TYPE_SERVER_HELLO && is_end_of_record) {
+            /*measure CPU cycles that client spends on SHLO*/
+            uint64_t start_cshlo = rdtsc();
             ret = client_handle_hello(tls, emitter, message, properties);
+            uint64_t end_cshlo = rdtsc();
+            log_cpu_cycles("HandleHello-client-subtotal", start_cshlo, end_cshlo);
         } else {
             ret = PTLS_ALERT_UNEXPECTED_MESSAGE;
         }
         break;
     case PTLS_STATE_CLIENT_EXPECT_ENCRYPTED_EXTENSIONS:
         if (type == PTLS_HANDSHAKE_TYPE_ENCRYPTED_EXTENSIONS) {
+            uint64_t start_cee = rdtsc();
             ret = client_handle_encrypted_extensions(tls, message, properties);
+            uint64_t end_cee = rdtsc();
+            log_cpu_cycles("HandleEE-client-subtotal", start_cee, end_cee);
         } else {
             ret = PTLS_ALERT_UNEXPECTED_MESSAGE;
         }
         break;
     case PTLS_STATE_CLIENT_EXPECT_CERTIFICATE_REQUEST_OR_CERTIFICATE:
         if (type == PTLS_HANDSHAKE_TYPE_CERTIFICATE_REQUEST) {
+            uint64_t start_ccertreq = rdtsc();
             ret = client_handle_certificate_request(tls, message, properties);
+            uint64_t end_ccertreq = rdtsc();
+            log_cpu_cycles("HandleCertReq-client-subtotal", start_ccertreq, end_ccertreq);
             break;
         }
     /* fall through */
@@ -5685,7 +5697,8 @@ static int handle_client_handshake_message(ptls_t *tls, ptls_message_emitter_t *
             uint64_t start_cert = rdtsc(); /*measure client handle cert*/
             ret = client_handle_certificate(tls, message);
             uint64_t end_cert = rdtsc();
-            printf("[%s]: -Client handle Cert CPU cycles %lu\n", __func__ , end_cert-start_cert);
+            log_cpu_cycles("HandleCert-client-subtotal", start_cert, end_cert);
+//            printf("[%s]: -Client handle Cert CPU cycles %lu\n", __func__ , end_cert-start_cert);
             break;
         case PTLS_HANDSHAKE_TYPE_COMPRESSED_CERTIFICATE:
             ret = client_handle_compressed_certificate(tls, message);
@@ -5700,7 +5713,8 @@ static int handle_client_handshake_message(ptls_t *tls, ptls_message_emitter_t *
             uint64_t start_certvef = rdtsc(); /*measure client handle certvef*/
             ret = client_handle_certificate_verify(tls, message);
             uint64_t end_certvef = rdtsc();
-            printf("[%s]: -Client handle CertVef CPU cycles %lu\n", __func__ , end_certvef-start_certvef);
+            log_cpu_cycles("HandleCertVef-client-subtotal", start_certvef, end_certvef);
+//            printf("[%s]: -Client handle CertVef CPU cycles %lu\n", __func__ , end_certvef-start_certvef);
         } else {
             ret = PTLS_ALERT_UNEXPECTED_MESSAGE;
         }
@@ -5710,7 +5724,8 @@ static int handle_client_handshake_message(ptls_t *tls, ptls_message_emitter_t *
             uint64_t start_fin = rdtsc(); /*measure client handle fin*/
             ret = client_handle_finished(tls, emitter, message);
             uint64_t end_fin = rdtsc();
-            printf("[%s]: -Client handle Fin CPU cycles %lu\n", __func__ , end_fin-start_fin);
+            log_cpu_cycles("HandleFin-client-subtotal", start_fin, end_fin);
+//            printf("[%s]: -Client handle Fin CPU cycles %lu\n", __func__ , end_fin-start_fin);
 
         } else {
             ret = PTLS_ALERT_UNEXPECTED_MESSAGE;
