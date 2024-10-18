@@ -31,6 +31,6 @@ void init_logger(void);
 void log_cpu_cycles(const char *operation_name, uint64_t start, uint64_t end);
 
 // Write all logged CPU cycles to a CSV file
-void write_cpu_cycles_to_csv(const char *filename);
+void write_cpu_cycles_to_csv(const char *filename, int handshake_count);
 
 #endif // CPU_CYCLE_LOGGER_H
