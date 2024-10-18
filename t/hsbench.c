@@ -12,6 +12,7 @@
 #include "picotls/openssl.h"
 #include "util.h"
 #include "../deps/picotest/picotest.h"
+#include "picotls/cpu_cycle_logger.h"
 
 #define BENCH_BATCH 1000
 ptls_context_t *ctx, *ctx_peer;
@@ -341,39 +342,6 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
         cbuf.off = 0;
     }
 
-    // remove code related to key update
-//    if (mode == TEST_HANDSHAKE_KEY_UPDATE) {
-//        /* server -> client with update_request */
-//        ret = ptls_update_key(server, 1);
-//        ok(ret == 0);
-//        ok(server->needs_key_update);
-//        ok(server->key_update_send_request);
-//        ret = ptls_send(server, &sbuf, "good bye", 8);
-//        ok(ret == 0);
-//        ok(!server->needs_key_update);
-//        ok(!server->key_update_send_request);
-//        consumed = sbuf.off;
-//        ret = ptls_receive(client, &decbuf, sbuf.base, &consumed);
-//        ok(ret == 0);
-//        ok(sbuf.off == consumed);
-//        ok(decbuf.off == 8);
-//        ok(memcmp(decbuf.base, "good bye", 8) == 0);
-//        ok(client->needs_key_update);
-//        ok(!client->key_update_send_request);
-//        sbuf.off = 0;
-//        decbuf.off = 0;
-//        ret = ptls_send(client, &cbuf, "hello", 5);
-//        ok(ret == 0);
-//        consumed = cbuf.off;
-//        ret = ptls_receive(server, &decbuf, cbuf.base, &consumed);
-//        ok(ret == 0);
-//        ok(cbuf.off == consumed);
-//        ok(decbuf.off == 5);
-//        ok(memcmp(decbuf.base, "hello", 5) == 0);
-//        cbuf.off = 0;
-//        decbuf.off = 0;
-//    }
-
     /* original_server is used for the server-side checks because handshake data is never migrated */
     if (can_ech(ctx_peer, 1) && can_ech(ctx, 0)) {
         ok(ptls_is_ech_handshake(client, NULL, NULL, NULL));
@@ -417,6 +385,20 @@ int main(int argc, char **argv)
 
     res_init();
 
+    if (argc < 2) {
+        printf("Usage: %s <handshake_count> <log_file>\n", argv[0]);
+        return 1;
+    }
+
+    int handshake_count = atoi(argv[1]);
+    if (handshake_count <= 0) {
+        printf("Invalid handshake count. Positive integer only\n");
+        return 1;
+    }
+
+    const char *log_file = argv[2];
+
+
     int ret = 0;
     uint64_t x = 0xdeadbeef;
     uint64_t s = 0;
@@ -434,11 +416,6 @@ int main(int argc, char **argv)
             strcpy(HW, uts.machine);
         }
     }
-    if (argc > 1) {
-        fprintf(stderr, "Usage: %s [-f]\n   Use option \"-f\" to force execution of the slower tests.\n", argv[0]);
-        exit(-1);
-    }
-
 
     // setup ptls handshake configuration
     // run client and server together
@@ -469,14 +446,10 @@ int main(int argc, char **argv)
 
     // run handshake here
     // full handshake with client authentication without ech
-    printf("Running handshake bench test ...\n");
-
+    init_logger();
+    printf("-----------Running %d handshake bench test------------\n", handshake_count);
     test_handshake(ptls_iovec_init(NULL, 0), TEST_HANDSHAKE_1RTT, 0, 0, 1, 0);
-
-
-
-
-
+    write_cpu_cycles_to_csv(log_file, handshake_count); /*write log to csv file*/
 
 
     printf(
