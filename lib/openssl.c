@@ -49,7 +49,8 @@
 #include <openssl/x509_vfy.h>
 #include "picotls.h"
 #include "picotls/openssl.h"
-#include "picotls/rdtsc.h"
+#include "picotls/cpu_cycle_logger.h"
+
 #ifdef OPENSSL_IS_BORINGSSL
 #include "./chacha20poly1305.h"
 #endif
@@ -937,7 +938,7 @@ static int do_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme,
 
     ret = 0;
     int64_t end_sign = rdtsc();
-    printf("[%s]: -Signing CPU cycles %lu\n", __func__ , end_sign-start_sign);
+    log_cpu_cycles("GenCertVef-xx-dosign", start_sign, end_sign);
 
 Exit:
     if (ctx != NULL)
@@ -1468,8 +1469,8 @@ SchemeFound:
 
     ret = 0;
     uint64_t end_verify = rdtsc();
-    printf("[%s]: -Verify signature CPU cycles %lu\n", __func__, end_verify-start_verify);
-
+    log_cpu_cycles("HandleCertVef-xx-verifysign", start_verify, end_verify);
+    printf("debug info [%s], HandleCertVef-xx-verifysign\n", __func__);
 Exit:
     if (ctx != NULL)
         EVP_MD_CTX_destroy(ctx);
@@ -1611,8 +1612,8 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
         goto Exit;
     }
     uint64_t end_certvef = rdtsc(); // start measuring openssl cert-verify CPU cycles
-    printf("[%s]: Openssl Cert-Verification CPU cycles: %lu\n", __func__, end_certvef-start_certvef);
-
+    log_cpu_cycles("HandleCert-xx-verifycert", start_certvef, end_certvef);
+    printf("debug info [%s] x509 verify cert\n", __func__);
     ret = 0;
 
 Exit:
@@ -1636,7 +1637,6 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
      * If no certs are given, just give
      * the override_callback to see if we want to stay fail open. */
     if (num_certs != 0) {
-        printf("Debug info--[%s]: number of certs = %zu\n", __func__, num_certs);
         if ((cert = to_x509(certs[0])) == NULL) { //cert[0]: peer certificate
             ret = PTLS_ALERT_BAD_CERTIFICATE;
             goto Exit;
@@ -1649,7 +1649,6 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
             }
             sk_X509_push(chain, interm);
         }
-        printf("Debug info--[%s]: verify cert chain\n", __func__);
         ret = verify_cert_chain(self->cert_store, cert, chain, ptls_is_server(tls), server_name, &ossl_x509_err);
     } else {
         ret = PTLS_ALERT_CERTIFICATE_REQUIRED;
@@ -1670,6 +1669,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
         goto Exit;
     }
     *verifier = verify_sign;
+    printf("debug info [%s] --verifycert\n", __func__);
 
 Exit:
     if (chain != NULL)
