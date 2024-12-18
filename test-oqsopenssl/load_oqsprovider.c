@@ -75,8 +75,11 @@ static void perform_dilithium_signature(OSSL_LIB_CTX *libctx) {
 
     EVP_PKEY *dilithium_key = NULL;
     T(EVP_PKEY_keygen(pctx, &dilithium_key) > 0);
-
     printf("Dilithium key generated successfully.\n");
+
+    // Output the EVP_PKEY_id() of the generated Dilithium key
+    int key_id = EVP_PKEY_id(dilithium_key);
+    printf("EVP_PKEY_id of Dilithium key: %d\n", key_id);
 
     EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(dilithium_key);
