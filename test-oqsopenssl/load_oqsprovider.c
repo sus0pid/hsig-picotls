@@ -1,3 +1,4 @@
+// gcc -o dynamic_oqsprovider dynamic_oqsprovider.c -I/usr/local/include -L/usr/local/lib64 -lssl -lcrypto -ldl
 #include <stdio.h>
 #include <stdlib.h> // For setenv
 #include <openssl/crypto.h>
