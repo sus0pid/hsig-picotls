@@ -4,7 +4,7 @@
 #include <openssl/err.h>
 #include <openssl/provider.h>
 #include <openssl/evp.h>
-#include <openssl/objects.h>
+#include <openssl/params.h>
 
 #define T(e)                                                                   \
     if (!(e)) {                                                                \
@@ -47,7 +47,13 @@ static void perform_ecdsa_signature(OSSL_LIB_CTX *libctx) {
     T(pctx != NULL);
 
     T(EVP_PKEY_keygen_init(pctx) > 0);
-    T(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, NID_secp256k1) > 0);
+//    T(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, NID_secp256k1) > 0); /*legacy version 1.1.1*/
+    // Set curve parameters using EVP_PKEY_CTX_set_params
+    OSSL_PARAM params[] = {
+        OSSL_PARAM_construct_utf8_string("group", "secp256k1", 0),
+        OSSL_PARAM_construct_end()
+    };
+    T(EVP_PKEY_CTX_set_params(pctx, params) > 0);
 
     EVP_PKEY *ecdsa_key = NULL;
     T(EVP_PKEY_keygen(pctx, &ecdsa_key) > 0);
