@@ -61,6 +61,10 @@ static void perform_ecdsa_signature(OSSL_LIB_CTX *libctx) {
 
     printf("ECDSA key generated successfully.\n");
 
+    // Output the EVP_PKEY_id() of the generated Dilithium key
+    int key_id = EVP_PKEY_id(ecdsa_key);
+    printf("EVP_PKEY_id of ecdsa key: %d\n", key_id);
+
     EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(ecdsa_key);
 }
