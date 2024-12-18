@@ -4,6 +4,7 @@
 #include <openssl/err.h>
 #include <openssl/provider.h>
 #include <openssl/evp.h>
+#include <openssl/objects.h>
 
 #define T(e)                                                                   \
     if (!(e)) {                                                                \
