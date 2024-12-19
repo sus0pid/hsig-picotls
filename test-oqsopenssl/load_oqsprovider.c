@@ -114,6 +114,98 @@ static void perform_falcon_signature(OSSL_LIB_CTX *libctx) {
     EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(falcon_key);
 }
+/** \brief Generate and save a Dilithium key and certificate */
+static void generate_dilithium_cert_key(OSSL_LIB_CTX *libctx, const char *keyfile, const char *certfile) {
+    printf("\nGenerating Dilithium certificate and key...\n");
+
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(libctx, "dilithium3", NULL);
+    T(pctx != NULL);
+
+    T(EVP_PKEY_keygen_init(pctx) > 0);
+
+    EVP_PKEY *dilithium_key = NULL;
+    T(EVP_PKEY_keygen(pctx, &dilithium_key) > 0);
+    printf("Dilithium key generated successfully.\n");
+
+    X509 *x509 = X509_new();
+    T(x509 != NULL);
+
+    T(ASN1_INTEGER_set(X509_get_serialNumber(x509), 1));
+    T(X509_gmtime_adj(X509_getm_notBefore(x509), 0));
+    T(X509_gmtime_adj(X509_getm_notAfter(x509), 31536000L));
+    T(X509_set_pubkey(x509, dilithium_key));
+
+    X509_NAME *name = X509_get_subject_name(x509);
+    T(name != NULL);
+    T(X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (unsigned char *)"CH", -1, -1, 0));
+    T(X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (unsigned char *)"test.org", -1, -1, 0));
+    T(X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char *)"localhost", -1, -1, 0));
+    T(X509_set_issuer_name(x509, name));
+    T(X509_sign(x509, dilithium_key, EVP_sha256()));
+
+    FILE *key_fp = fopen(keyfile, "wb");
+    T(key_fp != NULL);
+    T(PEM_write_PrivateKey(key_fp, dilithium_key, NULL, NULL, 0, NULL, NULL));
+    fclose(key_fp);
+
+    FILE *cert_fp = fopen(certfile, "wb");
+    T(cert_fp != NULL);
+    T(PEM_write_X509(cert_fp, x509));
+    fclose(cert_fp);
+
+    EVP_PKEY_free(dilithium_key);
+    X509_free(x509);
+    EVP_PKEY_CTX_free(pctx);
+
+    printf("Dilithium certificate and key saved to %s and %s.\n", keyfile, certfile);
+}
+
+/** \brief Read and display metadata of a certificate */
+static void read_cert_metadata(const char *certfile) {
+    printf("\nReading certificate metadata from %s...\n", certfile);
+
+    FILE *cert_fp = fopen(certfile, "rb");
+    T(cert_fp != NULL);
+
+    X509 *x509 = PEM_read_X509(cert_fp, NULL, NULL, NULL);
+    fclose(cert_fp);
+    T(x509 != NULL);
+
+    X509_NAME *subject = X509_get_subject_name(x509);
+    T(subject != NULL);
+
+    char buffer[256];
+    printf("Subject: %s\n", X509_NAME_oneline(subject, buffer, sizeof(buffer)));
+
+    ASN1_TIME *not_before = X509_get_notBefore(x509);
+    ASN1_TIME *not_after = X509_get_notAfter(x509);
+
+    printf("Validity:\n");
+    printf("  Not Before: ");
+    ASN1_TIME_print(stdout, not_before);
+    printf("\n");
+    printf("  Not After: ");
+    ASN1_TIME_print(stdout, not_after);
+    printf("\n");
+
+    X509_free(x509);
+}
+
+/** \brief Read and display Dilithium private key */
+static void read_dilithium_private_key(const char *keyfile) {
+    printf("\nReading Dilithium private key from %s...\n", keyfile);
+
+    FILE *key_fp = fopen(keyfile, "rb");
+    T(key_fp != NULL);
+
+    EVP_PKEY *pkey = PEM_read_PrivateKey(key_fp, NULL, NULL, NULL);
+    fclose(key_fp);
+    T(pkey != NULL);
+
+    printf("Private key successfully read.\n");
+
+    EVP_PKEY_free(pkey);
+}
 
 
 int main() {
@@ -127,13 +219,26 @@ int main() {
     // Load OQS provider
     OSSL_PROVIDER *oqs_provider = load_oqs_provider(libctx);
 
-    // Perform ECDSA signature (from default provider)
-    perform_ecdsa_signature(libctx);
+//    // Perform ECDSA signature (from default provider)
+//    perform_ecdsa_signature(libctx);
+//
+//    // Perform Dilithium signature (from OQS provider)
+//    perform_dilithium_signature(libctx);
+//
+//    perform_falcon_signature(libctx);
 
-    // Perform Dilithium signature (from OQS provider)
-    perform_dilithium_signature(libctx);
+    // File paths
+    const char *certfile = "dilithium_cert.pem";
+    const char *keyfile = "dilithium_key.pem";
 
-    perform_falcon_signature(libctx);
+    // Generate Dilithium certificate and key
+    generate_dilithium_cert_key(libctx, keyfile, certfile);
+
+    // Read and display certificate metadata
+    read_cert_metadata(certfile);
+
+    // Read and display Dilithium private key
+    read_dilithium_private_key(keyfile);
 
     // Unload providers and free library context
     OSSL_PROVIDER_unload(default_provider);
