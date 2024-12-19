@@ -90,6 +90,32 @@ static void perform_dilithium_signature(OSSL_LIB_CTX *libctx) {
     EVP_PKEY_free(dilithium_key);
 }
 
+/** \brief Perform Falcon signature using the OQS provider */
+static void perform_falcon_signature(OSSL_LIB_CTX *libctx) {
+    printf("\nPerforming Falcon signature...\n");
+
+    // Create a key generation context for Falcon
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(libctx, "falcon512", NULL);
+    T(pctx != NULL);
+
+    // Initialize the key generation context
+    T(EVP_PKEY_keygen_init(pctx) > 0);
+
+    // Generate the Falcon key
+    EVP_PKEY *falcon_key = NULL;
+    T(EVP_PKEY_keygen(pctx, &falcon_key) > 0);
+    printf("Falcon key generated successfully.\n");
+
+    // Output the EVP_PKEY_id() of the generated Falcon key
+    int key_id = EVP_PKEY_id(falcon_key);
+    printf("EVP_PKEY_id of Falcon key: %d\n", key_id);
+
+    // Clean up
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(falcon_key);
+}
+
+
 int main() {
     // Create a new OpenSSL library context
     OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
@@ -106,6 +132,8 @@ int main() {
 
     // Perform Dilithium signature (from OQS provider)
     perform_dilithium_signature(libctx);
+
+    perform_falcon_signature(libctx);
 
     // Unload providers and free library context
     OSSL_PROVIDER_unload(default_provider);
