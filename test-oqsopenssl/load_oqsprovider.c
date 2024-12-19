@@ -174,8 +174,8 @@ static void read_dilithium_private_key(const char *keyfile) {
     fclose(key_fp);
     T(key != NULL);
 
-    int key_type = EVP_PKEY_base_id(key);
-    printf("Private key type: %d\n", key_type);
+//    int key_type = EVP_PKEY_base_id(key);
+//    printf("Private key type: %d\n", key_type);
 
     EVP_PKEY_free(key);
 }
