@@ -6,6 +6,7 @@
 #include <openssl/provider.h>
 #include <openssl/evp.h>
 #include <openssl/params.h>
+#include <openssl/x509v3.h>
 
 #define T(e)                                                                   \
     if (!(e)) {                                                                \
