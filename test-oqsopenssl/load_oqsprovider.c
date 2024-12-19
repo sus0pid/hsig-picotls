@@ -114,22 +114,25 @@ static void perform_falcon_signature(OSSL_LIB_CTX *libctx) {
     EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(falcon_key);
 }
-/** \brief Generate and save a Dilithium key and certificate */
-static void generate_dilithium_cert_key(OSSL_LIB_CTX *libctx, const char *keyfile, const char *certfile) {
-    printf("\nGenerating Dilithium certificate and key...\n");
 
+/** \brief Generate Dilithium key and certificate */
+static void generate_dilithium_cert_and_key(OSSL_LIB_CTX *libctx, const char *certfile, const char *keyfile) {
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(libctx, "dilithium3", NULL);
     T(pctx != NULL);
-
     T(EVP_PKEY_keygen_init(pctx) > 0);
 
     EVP_PKEY *dilithium_key = NULL;
     T(EVP_PKEY_keygen(pctx, &dilithium_key) > 0);
-    printf("Dilithium key generated successfully.\n");
 
+    // Save private key to file
+    FILE *key_fp = fopen(keyfile, "w");
+    T(key_fp != NULL);
+    T(PEM_write_PrivateKey(key_fp, dilithium_key, NULL, NULL, 0, NULL, NULL));
+    fclose(key_fp);
+
+    // Create certificate
     X509 *x509 = X509_new();
     T(x509 != NULL);
-
     T(ASN1_INTEGER_set(X509_get_serialNumber(x509), 1));
     T(X509_gmtime_adj(X509_getm_notBefore(x509), 0));
     T(X509_gmtime_adj(X509_getm_notAfter(x509), 31536000L));
@@ -137,75 +140,57 @@ static void generate_dilithium_cert_key(OSSL_LIB_CTX *libctx, const char *keyfil
 
     X509_NAME *name = X509_get_subject_name(x509);
     T(name != NULL);
-    T(X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (unsigned char *)"CH", -1, -1, 0));
-    T(X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (unsigned char *)"test.org", -1, -1, 0));
+    T(X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (unsigned char *)"US", -1, -1, 0));
+    T(X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (unsigned char *)"Example Org", -1, -1, 0));
     T(X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char *)"localhost", -1, -1, 0));
     T(X509_set_issuer_name(x509, name));
     T(X509_sign(x509, dilithium_key, EVP_sha256()));
 
-    FILE *key_fp = fopen(keyfile, "wb");
-    T(key_fp != NULL);
-    T(PEM_write_PrivateKey(key_fp, dilithium_key, NULL, NULL, 0, NULL, NULL));
-    fclose(key_fp);
-
-    FILE *cert_fp = fopen(certfile, "wb");
+    // Save certificate to file
+    FILE *cert_fp = fopen(certfile, "w");
     T(cert_fp != NULL);
     T(PEM_write_X509(cert_fp, x509));
     fclose(cert_fp);
 
+    // Clean up
+    EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(dilithium_key);
     X509_free(x509);
-    EVP_PKEY_CTX_free(pctx);
 
-    printf("Dilithium certificate and key saved to %s and %s.\n", keyfile, certfile);
+    printf("Dilithium certificate and key generated successfully.\n");
 }
 
-/** \brief Read and display metadata of a certificate */
-static void read_cert_metadata(const char *certfile) {
-    printf("\nReading certificate metadata from %s...\n", certfile);
-
-    FILE *cert_fp = fopen(certfile, "rb");
-    T(cert_fp != NULL);
-
-    X509 *x509 = PEM_read_X509(cert_fp, NULL, NULL, NULL);
-    fclose(cert_fp);
-    T(x509 != NULL);
-
-    X509_NAME *subject = X509_get_subject_name(x509);
-    T(subject != NULL);
-
-    char buffer[256];
-    printf("Subject: %s\n", X509_NAME_oneline(subject, buffer, sizeof(buffer)));
-
-    ASN1_TIME *not_before = X509_get_notBefore(x509);
-    ASN1_TIME *not_after = X509_get_notAfter(x509);
-
-    printf("Validity:\n");
-    printf("  Not Before: ");
-    ASN1_TIME_print(stdout, not_before);
-    printf("\n");
-    printf("  Not After: ");
-    ASN1_TIME_print(stdout, not_after);
-    printf("\n");
-
-    X509_free(x509);
-}
-
-/** \brief Read and display Dilithium private key */
+/** \brief Read the Dilithium private key and output its algorithm */
 static void read_dilithium_private_key(const char *keyfile) {
-    printf("\nReading Dilithium private key from %s...\n", keyfile);
-
-    FILE *key_fp = fopen(keyfile, "rb");
+    FILE *key_fp = fopen(keyfile, "r");
     T(key_fp != NULL);
 
-    EVP_PKEY *pkey = PEM_read_PrivateKey(key_fp, NULL, NULL, NULL);
+    EVP_PKEY *key = PEM_read_PrivateKey(key_fp, NULL, NULL, NULL);
     fclose(key_fp);
-    T(pkey != NULL);
+    T(key != NULL);
 
-    printf("Private key successfully read.\n");
+    int key_type = EVP_PKEY_base_id(key);
+    printf("Private key type: %d\n", key_type);
 
-    EVP_PKEY_free(pkey);
+    EVP_PKEY_free(key);
 }
+
+/** \brief Read the Dilithium certificate and output its signature algorithm */
+static void read_dilithium_certificate(const char *certfile) {
+    FILE *cert_fp = fopen(certfile, "r");
+    T(cert_fp != NULL);
+
+    X509 *cert = PEM_read_X509(cert_fp, NULL, NULL, NULL);
+    fclose(cert_fp);
+    T(cert != NULL);
+
+    int sig_nid = X509_get_signature_nid(cert);
+    printf("Certificate signature algorithm NID: %d\n", sig_nid);
+    printf("Signature algorithm: %s\n", OBJ_nid2ln(sig_nid));
+
+    X509_free(cert);
+}
+
 
 
 int main() {
@@ -227,18 +212,16 @@ int main() {
 //
 //    perform_falcon_signature(libctx);
 
-    // File paths
+    // Generate Dilithium certificate and key
     const char *certfile = "dilithium_cert.pem";
     const char *keyfile = "dilithium_key.pem";
+    generate_dilithium_cert_and_key(libctx, certfile, keyfile);
 
-    // Generate Dilithium certificate and key
-    generate_dilithium_cert_key(libctx, keyfile, certfile);
-
-    // Read and display certificate metadata
-    read_cert_metadata(certfile);
-
-    // Read and display Dilithium private key
+    // Read and log details of the private key
     read_dilithium_private_key(keyfile);
+
+    // Read and log details of the certificate
+    read_dilithium_certificate(certfile);
 
     // Unload providers and free library context
     OSSL_PROVIDER_unload(default_provider);
