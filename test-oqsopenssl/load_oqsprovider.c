@@ -7,6 +7,10 @@
 #include <openssl/evp.h>
 #include <openssl/params.h>
 #include <openssl/x509v3.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/asn1.h>
+
 
 #define T(e)                                                                   \
     if (!(e)) {                                                                \
