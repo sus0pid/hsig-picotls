@@ -143,9 +143,6 @@ extern ptls_hpke_cipher_suite_t ptls_openssl_hpke_chacha20poly1305sha256;
 #endif
 extern ptls_hpke_cipher_suite_t *ptls_openssl_hpke_cipher_suites[];
 
-// for oqs signature algo test
-extern ptls_openssl_signature_scheme_t dilithium2_signature_schemes[];
-
 void ptls_openssl_random_bytes(void *buf, size_t len);
 /**
  * constructs a key exchange context. pkey's reference count is incremented.
@@ -156,6 +153,9 @@ typedef struct st_ptls_openssl_signature_scheme_t {
     uint16_t scheme_id;
     const EVP_MD *(*scheme_md)(void);
 } ptls_openssl_signature_scheme_t;
+
+// for oqs signature algo test
+extern ptls_openssl_signature_scheme_t dilithium2_signature_schemes[];
 
 /**
  * Given a private key, returns a list of compatible signature schemes. This list is terminated by scheme_id of UINT16_MAX.
