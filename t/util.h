@@ -59,7 +59,7 @@ static inline void load_raw_public_key(ptls_iovec_t *raw_public_key, char const 
 
 // if is_oqs == 1, provide oqs scheme.
 static inline void load_private_key(ptls_context_t *ctx, const char *fn, size_t is_oqs,
-                                    const ptls_openssl_signature_scheme_t *oqs_schemes)
+                                    ptls_openssl_signature_scheme_t *oqs_schemes)
 {
     static ptls_openssl_sign_certificate_t sc;
     FILE *fp;

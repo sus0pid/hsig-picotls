@@ -1637,13 +1637,13 @@ Exit:
 
 /*TODO: ptls_openssl_lookup_signature_schemes*/
 int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
-                                       const ptls_openssl_signature_scheme_t oqs_scheme)
+                                       ptls_openssl_signature_scheme_t *oqs_schemes)
 {
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
     // if it's non-oqs signature algos
-    if (oqs_scheme != NULL) {
-        self->schemes = oqs_scheme;
+    if (oqs_schemes != NULL) {
+        self->schemes = oqs_schemes;
     }
     if (self->schemes == NULL) {
         if ((self->schemes = ptls_openssl_lookup_signature_schemes(key)) == NULL)
