@@ -510,7 +510,7 @@ int main(int argc, char **argv)
             break;
         case 'k':
             // test oqs sig algo: dilithium2
-            ptls_openssl_signature_scheme_t *oqs_schemes = dilithium2_signature_schemes;
+            const ptls_openssl_signature_scheme_t *oqs_schemes = dilithium2_signature_schemes;
             load_private_key(&ctx, optarg, is_oqs, oqs_schemes);
             break;
         case 'n':

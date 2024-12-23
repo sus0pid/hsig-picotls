@@ -155,7 +155,7 @@ typedef struct st_ptls_openssl_signature_scheme_t {
 } ptls_openssl_signature_scheme_t;
 
 // for oqs signature algo test
-extern ptls_openssl_signature_scheme_t dilithium2_signature_schemes[];
+extern const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[];
 
 /**
  * Given a private key, returns a list of compatible signature schemes. This list is terminated by scheme_id of UINT16_MAX.
@@ -182,7 +182,7 @@ typedef struct st_ptls_openssl_sign_certificate_t {
 } ptls_openssl_sign_certificate_t;
 
 int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
-                                       ptls_openssl_signature_scheme_t *oqs_schemes);
+                                       const ptls_openssl_signature_scheme_t *oqs_schemes);
 void ptls_openssl_dispose_sign_certificate(ptls_openssl_sign_certificate_t *self);
 int ptls_openssl_load_certificates(ptls_context_t *ctx, X509 *cert, STACK_OF(X509) * chain);
 

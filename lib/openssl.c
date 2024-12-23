@@ -129,15 +129,15 @@ static const ptls_openssl_signature_scheme_t ed25519_signature_schemes[] = {{PTL
 //    {PTLS_SIGNATURE_DILITHIUM5, NULL}, /* Dilithium5 */
 //    {UINT16_MAX, NULL} /* Termination */
 //};
-static const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[] = {
+const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM2, NULL},
     {UINT16_MAX, NULL} /* Termination */
 };
-static const ptls_openssl_signature_scheme_t dilithium3_signature_schemes[] = {
+const ptls_openssl_signature_scheme_t dilithium3_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM3, NULL},
     {UINT16_MAX, NULL} /* Termination */
 };
-static const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[] = {
+const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM5, NULL},
     {UINT16_MAX, NULL} /* Termination */
 };
@@ -1637,7 +1637,7 @@ Exit:
 
 /*TODO: ptls_openssl_lookup_signature_schemes*/
 int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
-                                       ptls_openssl_signature_scheme_t *oqs_schemes)
+                                       const ptls_openssl_signature_scheme_t *oqs_schemes)
 {
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
