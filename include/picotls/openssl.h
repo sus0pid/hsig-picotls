@@ -31,6 +31,7 @@ extern "C" {
 #include <openssl/hmac.h>
 #include <openssl/x509.h>
 #include <openssl/opensslconf.h>
+#include <openssl/provider.h>
 #include "../picotls.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(OPENSSL_NO_CHACHA) && !defined(OPENSSL_NO_POLY1305)
@@ -177,7 +178,8 @@ typedef struct st_ptls_openssl_sign_certificate_t {
     unsigned async : 1;
 } ptls_openssl_sign_certificate_t;
 
-int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key);
+int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
+                                       const ptls_openssl_signature_scheme_t *oqs_schemes);
 void ptls_openssl_dispose_sign_certificate(ptls_openssl_sign_certificate_t *self);
 int ptls_openssl_load_certificates(ptls_context_t *ctx, X509 *cert, STACK_OF(X509) * chain);
 

@@ -370,6 +370,7 @@ static void usage(const char *cmd)
            "  -i file              a file to read from and send to the peer (default: stdin)\n"
            "  -I                   keep send side open after sending all data (client-only)\n"
            "  -j log-file          file to log probe events in JSON-Lines\n"
+           "  -o                   enable oqs signature algorithms (dilithium2 for now)\n"
            "  -k key-file          specifies the credentials for signing the certificate\n"
            "  -K key-file          ECH private key for each ECH config provided by -E\n"
            "  -l log-file          file to log events (incl. traffic secrets)\n"
@@ -458,13 +459,13 @@ int main(int argc, char **argv)
     };
     ptls_handshake_properties_t hsprop = {{{{NULL}}}};
     const char *host, *port, *input_file = NULL, *psk_hash = "sha256";
-    int is_server = 0, use_early_data = 0, request_key_update = 0, keep_sender_open = 0, ch;
+    int is_server = 0, use_early_data = 0, request_key_update = 0, keep_sender_open = 0, is_oqs = 0, ch;
     struct sockaddr_storage sa;
     socklen_t salen;
     int family = 0;
     const char *raw_pub_key_file = NULL, *cert_location = NULL;
 
-    while ((ch = getopt(argc, argv, "46abBC:c:i:Ij:k:nN:es:Sr:p:P:E:K:l:T:uy:vV:h")) != -1) {
+    while ((ch = getopt(argc, argv, "46abBC:c:i:Ij:ok:nN:es:Sr:p:P:E:K:l:T:uy:vV:h")) != -1) {
         switch (ch) {
         case '4':
             family = AF_INET;
@@ -504,8 +505,13 @@ int main(int argc, char **argv)
         case 'j':
             setup_ptlslog(optarg);
             break;
+        case 'o':
+            is_oqs = 1;
+            break;
         case 'k':
-            load_private_key(&ctx, optarg);
+            // test oqs sig algo: dilithium2
+            ptls_openssl_signature_scheme_t *oqs_schemes = dilithium2_signature_schemes;
+            load_private_key(&ctx, optarg, is_oqs, oqs_schemes);
             break;
         case 'n':
             hsprop.client.negotiate_before_key_exchange = 1;

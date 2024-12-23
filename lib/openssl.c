@@ -120,6 +120,29 @@ static const ptls_openssl_signature_scheme_t secp521r1_signature_schemes[] = {{P
 #if PTLS_OPENSSL_HAVE_ED25519
 static const ptls_openssl_signature_scheme_t ed25519_signature_schemes[] = {{PTLS_SIGNATURE_ED25519, NULL}, {UINT16_MAX, NULL}};
 #endif
+/**
+ * post-quantum signature algorithm from oqsproviderr
+ * */
+//static const ptls_openssl_signature_scheme_t dilithium_signature_schemes[] = {
+//    {PTLS_SIGNATURE_DILITHIUM2, NULL}, /* Dilithium2 */
+//    {PTLS_SIGNATURE_DILITHIUM3, NULL}, /* Dilithium3 */
+//    {PTLS_SIGNATURE_DILITHIUM5, NULL}, /* Dilithium5 */
+//    {UINT16_MAX, NULL} /* Termination */
+//};
+static const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[] = {
+    {PTLS_SIGNATURE_DILITHIUM2, NULL},
+    {UINT16_MAX, NULL} /* Termination */
+};
+static const ptls_openssl_signature_scheme_t dilithium3_signature_schemes[] = {
+    {PTLS_SIGNATURE_DILITHIUM3, NULL},
+    {UINT16_MAX, NULL} /* Termination */
+};
+static const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[] = {
+    {PTLS_SIGNATURE_DILITHIUM5, NULL},
+    {UINT16_MAX, NULL} /* Termination */
+};
+
+
 
 /**
  * The default list sent in ClientHello.signature_algorithms. ECDSA certificates are preferred.
@@ -138,6 +161,10 @@ static const uint16_t default_signature_schemes[] = {
     PTLS_SIGNATURE_RSA_PSS_RSAE_SHA512,
     PTLS_SIGNATURE_RSA_PSS_RSAE_SHA384,
     PTLS_SIGNATURE_RSA_PSS_RSAE_SHA256,
+    /* post-quantum signature */
+    PTLS_SIGNATURE_DILITHIUM2,
+    PTLS_SIGNATURE_DILITHIUM3,
+    PTLS_SIGNATURE_DILITHIUM5,
     UINT16_MAX};
 
 const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_signature_schemes(EVP_PKEY *key)
@@ -174,6 +201,9 @@ const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_signature_schemes(EVP
         schemes = ed25519_signature_schemes;
         break;
 #endif
+//    case -1:
+//        schemes = oqs_signature_schemes; /* add oqs sig_algo*/
+//        break;
     default:
         break;
     }
@@ -1488,6 +1518,7 @@ ptls_define_hash(sha384, SHA512_CTX, SHA384_Init, SHA384_Update, _sha384_final);
 #define _sha512_final(ctx, md) SHA512_Final((md), (ctx))
 ptls_define_hash(sha512, SHA512_CTX, SHA512_Init, SHA512_Update, _sha512_final);
 
+/* callback function of ptls_sign_certificate_t *sign_certificate */
 static int sign_certificate(ptls_sign_certificate_t *_self, ptls_t *tls, ptls_async_job_t **async, uint16_t *selected_algorithm,
                             ptls_buffer_t *outbuf, ptls_iovec_t input, const uint16_t *algorithms, size_t num_algorithms)
 {
@@ -1524,6 +1555,7 @@ static X509 *to_x509(ptls_iovec_t vec)
     return d2i_X509(NULL, &p, (long)vec.len);
 }
 
+/*TODO: comment out ptls_openssl_lookup_signature_schemes()*/
 static int verify_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
 {
     EVP_PKEY *key = verify_ctx;
@@ -1603,12 +1635,21 @@ Exit:
     return ret;
 }
 
-int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key)
+/*TODO: ptls_openssl_lookup_signature_schemes*/
+int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
+                                       const ptls_openssl_signature_scheme_t oqs_scheme)
 {
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
-    if ((self->schemes = ptls_openssl_lookup_signature_schemes(key)) == NULL)
-        return PTLS_ERROR_INCOMPATIBLE_KEY;
+    // if it's non-oqs signature algos
+    if (oqs_scheme != NULL) {
+        self->schemes = oqs_scheme;
+    }
+    if (self->schemes == NULL) {
+        if ((self->schemes = ptls_openssl_lookup_signature_schemes(key)) == NULL)
+            return PTLS_ERROR_INCOMPATIBLE_KEY;
+    }
+
     EVP_PKEY_up_ref(key);
     self->key = key;
 
