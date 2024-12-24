@@ -78,7 +78,7 @@ static inline void load_private_key(ptls_context_t *ctx, const char *fn, size_t 
     }
 
     if (is_oqs)
-        ptls_openssl_init_oqs_sign_certificate();
+        ptls_openssl_init_oqs_sign_certificate(&sc, pkey, oqs_schemes);
     else
         ptls_openssl_init_trad_sign_certificate(&sc, pkey);
     EVP_PKEY_free(pkey);
