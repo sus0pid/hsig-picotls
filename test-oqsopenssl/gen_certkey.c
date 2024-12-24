@@ -4,6 +4,9 @@
 //
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 
 #include "oqs_util.h"
 
