@@ -318,7 +318,7 @@ static void setup_sign_certificate(ptls_openssl_sign_certificate_t *sc)
     assert(pkey != NULL || !"failed to load private key");
     BIO_free(bio);
 
-    ptls_openssl_init_sign_certificate(sc, pkey);
+    ptls_openssl_init_trad_sign_certificate(sc, pkey);
 
     EVP_PKEY_free(pkey);
 }

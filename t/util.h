@@ -57,7 +57,7 @@ static inline void load_raw_public_key(ptls_iovec_t *raw_public_key, char const 
     }
 }
 
-// if is_oqs == 1, provide oqs scheme.
+// if is_oqs == 1, provide oqs signature scheme.
 static inline void load_private_key(ptls_context_t *ctx, const char *fn, size_t is_oqs,
                                     const ptls_openssl_signature_scheme_t *oqs_schemes)
 {
@@ -77,7 +77,10 @@ static inline void load_private_key(ptls_context_t *ctx, const char *fn, size_t 
         exit(1);
     }
 
-    ptls_openssl_init_sign_certificate(&sc, pkey, oqs_schemes);
+    if (is_oqs)
+        ptls_openssl_init_oqs_sign_certificate();
+    else
+        ptls_openssl_init_trad_sign_certificate(&sc, pkey);
     EVP_PKEY_free(pkey);
 
     ctx->sign_certificate = &sc.super;

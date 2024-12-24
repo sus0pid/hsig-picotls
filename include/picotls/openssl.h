@@ -181,7 +181,8 @@ typedef struct st_ptls_openssl_sign_certificate_t {
     unsigned async : 1;
 } ptls_openssl_sign_certificate_t;
 
-int ptls_openssl_init_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
+int ptls_openssl_init_trad_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key);
+int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
                                        const ptls_openssl_signature_scheme_t *oqs_schemes);
 void ptls_openssl_dispose_sign_certificate(ptls_openssl_sign_certificate_t *self);
 int ptls_openssl_load_certificates(ptls_context_t *ctx, X509 *cert, STACK_OF(X509) * chain);
