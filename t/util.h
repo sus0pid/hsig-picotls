@@ -37,8 +37,42 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <openssl/pem.h>
+#include <openssl/provider.h>
 #include "picotls/pembase64.h"
 #include "picotls/openssl.h"
+
+static inline void load_providers_default_context() {
+    // Set the default search path for providers
+    const char *provider_path = "/usr/local/lib64/ossl-modules";
+    if (!OSSL_PROVIDER_set_default_search_path(NULL, provider_path)) {
+        fprintf(stderr, "Failed to set provider search path: %s\n", provider_path);
+        return;
+    }
+    printf("Provider search path set to: %s\n", provider_path);
+
+    // Load the OQS provider into the default context
+    OSSL_PROVIDER *oqsprovider = OSSL_PROVIDER_load(NULL, "oqsprovider");
+    if (oqsprovider == NULL) {
+        fprintf(stderr, "Failed to load OQS provider.\n");
+        return;
+    }
+    printf("OQS provider successfully loaded.\n");
+
+    // Load the default provider into the default context
+    OSSL_PROVIDER *dflt = OSSL_PROVIDER_load(NULL, "default");
+    if (dflt == NULL) {
+        fprintf(stderr, "Failed to load default provider.\n");
+        // Unload oqsprovider if loading the default provider failed
+        OSSL_PROVIDER_unload(oqsprovider);
+        return;
+    }
+    printf("Default provider successfully loaded.\n");
+
+    // Providers will remain loaded globally unless explicitly unloaded
+    // Uncomment the lines below if you want to unload after testing:
+    // OSSL_PROVIDER_unload(dflt);
+    // OSSL_PROVIDER_unload(oqsprovider);
+}
 
 static inline void load_certificate_chain(ptls_context_t *ctx, const char *fn)
 {

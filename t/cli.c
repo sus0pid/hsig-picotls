@@ -439,6 +439,8 @@ int main(int argc, char **argv)
 {
     ERR_load_crypto_strings();
     OpenSSL_add_all_algorithms();
+    /* Explicitly load the oqs provider in addition to default, as we test oqs in . */
+    load_providers_default_context();
 #if !defined(OPENSSL_NO_ENGINE)
     /* Load all compiled-in ENGINEs */
     ENGINE_load_builtin_engines();
@@ -507,6 +509,8 @@ int main(int argc, char **argv)
             break;
         case 'o':
             is_oqs = 1;
+            // load oqs provider
+
             break;
         case 'k':
             // test oqs sig algo: dilithium2
