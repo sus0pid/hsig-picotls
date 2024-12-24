@@ -1,5 +1,6 @@
 //
 // Created by xinshu on 24/12/24.
+// gcc -o dynamic_oqsprovider dynamic_oqsprovider.c -I/usr/local/include -L/usr/local/lib64 -lssl -lcrypto -ldl
 //
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -56,9 +57,18 @@ int main() {
     const char *sep = "";
 #endif
 
+    char *certsdir = "certs";
     char *sig_name = "dilithium2";
     sprintf(certpath, "%s%s%s%s", certsdir, sep, sig_name, "_cert.pem");
     sprintf(privkeypath, "%s%s%s%s", certsdir, sep, sig_name, "_key.pem");
+    if (mkdir(certsdir, 0700)) {
+        if (errno != EEXIST) {
+            fprintf(stderr, "Couldn't create certsdir %s: Err = %d\n", certsdir,
+                    errno);
+            ret = -1;
+            goto err;
+        }
+    }
 
     OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
     // Load default provider
