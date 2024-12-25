@@ -218,6 +218,49 @@ static void do_test_ecdsa_sign(int nid, const ptls_openssl_signature_scheme_t *s
     EVP_PKEY_free(pkey);
 }
 
+static void do_test_oqs_sign(int nid, const ptls_openssl_signature_scheme_t *schemes)
+{
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, "dilithium3", NULL);
+    if (pctx == NULL) {
+        fprintf(stderr, "Failed to create PKEY context for Dilithium.\n");
+        return -1;
+    }
+
+    if (EVP_PKEY_keygen_init(pctx) <= 0) {
+        fprintf(stderr, "Failed to initialize Dilithium keygen.\n");
+        EVP_PKEY_CTX_free(pctx);
+        return -1;
+    }
+
+    EVP_PKEY *pkey = NULL;
+    if (EVP_PKEY_keygen(pctx, &pkey) <= 0) {
+        fprintf(stderr, "Failed to generate Dilithium key.\n");
+    } else {
+        printf("Dilithium key generated successfully.\n");
+    }
+
+
+
+
+    test_sign_verify(pkey, schemes);
+    // Clean up
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(pkey);
+}
+
+
+/* TODO:test oqs signature algo */
+static void test_oqs_sign(void)
+{
+    do_test_ecdsa_sign(NID_X9_62_prime256v1, secp256r1_signature_schemes);
+#if PTLS_OPENSSL_HAVE_SECP384R1
+    do_test_ecdsa_sign(NID_secp384r1, secp384r1_signature_schemes);
+#endif
+#if PTLS_OPENSSL_HAVE_SECP521R1
+    do_test_ecdsa_sign(NID_secp521r1, secp521r1_signature_schemes);
+#endif
+}
+
 static void test_ecdsa_sign(void)
 {
     do_test_ecdsa_sign(NID_X9_62_prime256v1, secp256r1_signature_schemes);
@@ -271,6 +314,38 @@ static ptls_key_exchange_context_t *key_from_pem(const char *pem)
 }
 
 static void test_cert_verify(void)
+{
+    X509 *cert = x509_from_pem(RSA_CERTIFICATE);
+    STACK_OF(X509) *chain = sk_X509_new_null();
+    X509_STORE *store = X509_STORE_new();
+    int ret, ossl_x509_err;
+
+    /* expect fail when no CA is registered */
+    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ok(ret == PTLS_ALERT_UNKNOWN_CA);
+
+    /* expect success after registering the CA */
+    X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+    ret = X509_LOOKUP_load_file(lookup, "t/assets/test-ca.crt", X509_FILETYPE_PEM);
+    ok(ret);
+    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ok(ret == 0);
+
+#ifdef X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS
+    /* different server_name */
+    ret = verify_cert_chain(store, cert, chain, 0, "test2.example.com", &ossl_x509_err);
+    ok(ret == PTLS_ALERT_BAD_CERTIFICATE);
+#else
+    fprintf(stderr, "**** skipping test for hostname validation failure ***\n");
+#endif
+
+    X509_free(cert);
+    sk_X509_free(chain);
+    X509_STORE_free(store);
+}
+
+/* TODO:test dilithium2 cert verify*/
+static void test_oqs_cert_verify(void)
 {
     X509 *cert = x509_from_pem(RSA_CERTIFICATE);
     STACK_OF(X509) *chain = sk_X509_new_null();
@@ -374,6 +449,28 @@ static ptls_aead_context_t *create_ech_opener(ptls_ech_create_opener_t *self, pt
 Exit:
     ptls_buffer_dispose(&infobuf);
     return aead;
+}
+
+static void load_oqs_provider() {
+    // Set the default search path for providers
+    const char *provider_path = "/usr/local/lib64/ossl-modules";
+    if (!OSSL_PROVIDER_set_default_search_path(NULL, provider_path)) {
+        fprintf(stderr, "Failed to set provider search path: %s\n", provider_path);
+        return;
+    }
+    printf("Provider search path set to: %s\n", provider_path);
+
+    // Load the OQS provider into the default context
+    OSSL_PROVIDER *oqsprovider = OSSL_PROVIDER_load(NULL, "oqsprovider");
+    if (oqsprovider == NULL) {
+        fprintf(stderr, "Failed to load OQS provider.\n");
+        return;
+    }
+    printf("OQS provider successfully loaded.\n");
+
+    // Providers will remain loaded globally unless explicitly unloaded
+    // Uncomment the lines below if you want to unload after testing:
+    // OSSL_PROVIDER_unload(oqsprovider);
 }
 
 #if ASYNC_TESTS
@@ -537,6 +634,22 @@ int main(int argc, char **argv)
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
     /* Explicitly load the legacy provider in addition to default, as we test Blowfish in one of the tests. */
     OSSL_PROVIDER *legacy = OSSL_PROVIDER_load(NULL, "legacy");
+    /* Explicitly load the oqs provider, as we test oqs in one of the tests */
+    // Set the default search path for providers
+    const char *provider_path = "/usr/local/lib64/ossl-modules";
+    if (!OSSL_PROVIDER_set_default_search_path(NULL, provider_path)) {
+        fprintf(stderr, "Failed to set provider search path: %s\n", provider_path);
+        return;
+    }
+    printf("Provider search path set to: %s\n", provider_path);
+    // Load the OQS provider into the default context
+    OSSL_PROVIDER *oqsprovider = OSSL_PROVIDER_load(NULL, "oqsprovider");
+    if (oqsprovider == NULL) {
+        fprintf(stderr, "Failed to load OQS provider.\n");
+        return;
+    }
+    printf("OQS provider successfully loaded.\n");
+
     OSSL_PROVIDER *dflt = OSSL_PROVIDER_load(NULL, "default");
 #elif !defined(OPENSSL_NO_ENGINE)
     /* Load all compiled-in ENGINEs */
@@ -648,6 +761,7 @@ int main(int argc, char **argv)
     int ret = done_testing();
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
     OSSL_PROVIDER_unload(dflt);
+    OSSL_PROVIDER_unload(oqsprovider);
     OSSL_PROVIDER_unload(legacy);
 #endif
     return ret;
