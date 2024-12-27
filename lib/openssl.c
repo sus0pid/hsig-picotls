@@ -1047,7 +1047,7 @@ static int do_oqs_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *sch
     }
     if ((ret = ptls_buffer_reserve(outbuf, siglen)) != 0)
         goto Exit;
-    if (EVP_DigestSignFinal(ctx, output->base + output->off, &siglen) != 1) {
+    if (EVP_DigestSignFinal(ctx, outbuf->base + outbuf->off, &siglen) != 1) {
         ret = PTLS_ERROR_LIBRARY;
         goto Exit;
     }
