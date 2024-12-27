@@ -151,6 +151,9 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     ADD_EXECUTABLE(cli t/cli.c lib/pembase64.c)
     TARGET_LINK_LIBRARIES(cli picotls-openssl picotls-core)
 
+    # for oqs sigalgo tests
+    set(PTLS_OPENSSL_HAVE_OQS 1)
+
     ADD_EXECUTABLE(test-openssl.t
         ${MINICRYPTO_LIBRARY_FILES}
         ${MINICRYPTO_AEGIS_FILES}
@@ -167,6 +170,9 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
         deps/picotest/picotest.c
         ${CORE_TEST_FILES}
         t/openssl.c)
+    target_compile_definitions(
+            test-openssl.t
+            PUBLIC PTLS_OPENSSL_HAVE_OQS=${PTLS_OPENSSL_HAVE_OQS})
     SET_TARGET_PROPERTIES(test-openssl.t PROPERTIES COMPILE_FLAGS "-DPTLS_MEMORY_DEBUG=1")
     TARGET_LINK_LIBRARIES(test-openssl.t ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} ${CMAKE_DL_LIBS})
 
