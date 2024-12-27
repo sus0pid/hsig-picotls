@@ -264,10 +264,12 @@ static void do_test_oqs_sign(const char *oqssig_name, const ptls_openssl_signatu
 }
 
 
-/* TODO:test oqs signature algo */
+/* test oqs signature algo */
 static void test_oqs_sign(void)
 {
     do_test_oqs_sign("dilithium2", dilithium2_signature_schemes);
+    do_test_oqs_sign("dilithium2", dilithium3_signature_schemes);
+    do_test_oqs_sign("dilithium2", dilithium5_signature_schemes);
 }
 
 static void test_ecdsa_sign(void)
