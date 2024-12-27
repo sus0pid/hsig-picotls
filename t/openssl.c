@@ -147,6 +147,27 @@ static void test_key_exchanges(void)
 #endif
 }
 
+static void test_oqs_sign_verify(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes)
+{
+    for (size_t i = 0; schemes[i].scheme_id != UINT16_MAX; ++i) {
+        note("scheme 0x%04x", schemes[i].scheme_id);
+        const void *message = "hello world";
+        ptls_buffer_t sigbuf;
+        uint8_t sigbuf_small[1024];
+
+        ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
+        ok(do_oqs_sign(key, schemes+i, &sigbuf, ptls_iovec_init(message, strlen(message)), NULL) == 0);
+        EVP_PKEY_up_ref(key);
+
+        //        ok(verify_oqs_sign())
+        fprintf(stderr, "[%s]: after do_oqs_sign()\n", __func__);
+        exit(1);
+
+
+        ptls_buffer_dispose(&sigbuf);
+    }
+}
+
 static void test_sign_verify(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes)
 {
     for (size_t i = 0; schemes[i].scheme_id != UINT16_MAX; ++i) {
@@ -156,21 +177,10 @@ static void test_sign_verify(EVP_PKEY *key, const ptls_openssl_signature_scheme_
         uint8_t sigbuf_small[1024];
 
         ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
-#if PTLS_OPENSSL_HAVE_OQS
-        ok(do_oqs_sign(key, schemes+i, &sigbuf, ptls_iovec_init(message, strlen(message)), NULL) == 0);
-#else
         ok(do_sign(key, schemes + i, &sigbuf, ptls_iovec_init(message, strlen(message)), NULL) == 0);
-#endif
-
         EVP_PKEY_up_ref(key);
-#if PTLS_OPENSSL_HAVE_OQS
-//        ok()
-        fprintf(stderr, "[%s]: after do_oqs_sign()\n", __func__);
-        exit(1);
-#else
         ok(verify_sign(key, schemes[i].scheme_id, ptls_iovec_init(message, strlen(message)),
                        ptls_iovec_init(sigbuf.base, sigbuf.off)) == 0);
-#endif
 
         ptls_buffer_dispose(&sigbuf);
     }
@@ -250,7 +260,7 @@ static void do_test_oqs_sign(const char *oqssig_name, const ptls_openssl_signatu
         printf("Dilithium key generated successfully.\n");
     }
 
-    test_sign_verify(pkey, schemes);
+    test_oqs_sign_verify(pkey, schemes);
     // Clean up
     EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(pkey);
