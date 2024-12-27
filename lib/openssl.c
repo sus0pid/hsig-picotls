@@ -129,6 +129,7 @@ static const ptls_openssl_signature_scheme_t ed25519_signature_schemes[] = {{PTL
 //    {PTLS_SIGNATURE_DILITHIUM5, NULL}, /* Dilithium5 */
 //    {UINT16_MAX, NULL} /* Termination */
 //};
+#if PTLS_OPENSSL_HAVE_OQS
 const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM2, NULL},
     {UINT16_MAX, NULL} /* Termination */
@@ -141,6 +142,7 @@ const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM5, NULL},
     {UINT16_MAX, NULL} /* Termination */
 };
+#endif
 
 
 
@@ -1016,6 +1018,50 @@ Exit:
 
 #endif
 
+/* do sign for oqs sig algo */
+static int do_oqs_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
+                       ptls_async_job_t **async)
+{
+    EVP_MD_CTX *ctx = NULL;
+//    const EVP_MD *md = scheme->scheme_md != NULL ? scheme->scheme_md() : NULL;
+    size_t siglen;
+    int ret;
+
+    if ((ctx = EVP_MD_CTX_new()) == NULL) {
+        ret = PTLS_ERROR_NO_MEMORY;
+        goto Exit;
+    }
+
+    if (EVP_DigestSignInit_ex(ctx, NULL, NULL, NULL, NULL, key, NULL) != 1) {
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+
+    if (EVP_DigestSignUpdate(ctx, input.base, input.len) != 1) {
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+    if (EVP_DigestSignFinal(ctx, NULL, &siglen) != 1) {
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+    if ((ret = ptls_buffer_reserve(outbuf, siglen)) != 0)
+        goto Exit;
+    if (EVP_DigestSignFinal(ctx, output->base + output->off, &siglen) != 1) {
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+    outbuf->off += siglen;
+    ret = 0;
+    fprintf(stderr, "[%s]: oqs sign successfully!\n", __func__ );
+
+Exit:
+    if (ctx != NULL)
+        EVP_MD_CTX_free(ctx);
+    return ret;
+}
+
+/* do_sign for traditional sig algo */
 static int do_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                    ptls_async_job_t **async)
 {
@@ -1551,6 +1597,12 @@ static X509 *to_x509(ptls_iovec_t vec)
     const uint8_t *p = vec.base;
     return d2i_X509(NULL, &p, (long)vec.len);
 }
+
+///* TODO: verify oqs sign */
+//static int verify_oqs_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
+//{
+//
+//}
 
 /*TODO: comment out ptls_openssl_lookup_signature_schemes()*/
 static int verify_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
