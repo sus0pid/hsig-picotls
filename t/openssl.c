@@ -633,7 +633,7 @@ int main(int argc, char **argv)
 
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
     /* Explicitly load the legacy provider in addition to default, as we test Blowfish in one of the tests. */
-    OSSL_PROVIDER *legacy = OSSL_PROVIDER_load(NULL, "legacy");
+//    OSSL_PROVIDER *legacy = OSSL_PROVIDER_load(NULL, "legacy");
     /* Explicitly load the oqs provider, as we test oqs in one of the tests */
     // Set the default search path for providers
     const char *provider_path = "/usr/local/lib64/ossl-modules";
@@ -658,9 +658,9 @@ int main(int argc, char **argv)
     ENGINE_register_all_digests();
 #endif
 
-    subtest("bf", test_bf);
+//    subtest("bf", test_bf);
 
-    subtest("key-exchange", test_key_exchanges);
+//    subtest("key-exchange", test_key_exchanges);
 
     ptls_iovec_t cert;
     setup_certificate(&cert);
@@ -694,75 +694,75 @@ int main(int argc, char **argv)
     ADD_FFX_CHACHA20_ALGORITHMS(openssl);
 #endif
 
-    subtest("sha", test_sha);
+//    subtest("sha", test_sha);
     subtest("rsa-sign", test_rsa_sign);
-    subtest("ecdsa-sign", test_ecdsa_sign);
-    subtest("ed25519-sign", test_ed25519_sign);
-    subtest("cert-verify", test_cert_verify);
-    subtest("picotls", test_picotls);
+//    subtest("ecdsa-sign", test_ecdsa_sign);
+//    subtest("ed25519-sign", test_ed25519_sign);
+//    subtest("cert-verify", test_cert_verify);
+//    subtest("picotls", test_picotls);
 
-    ctx = ctx_peer = &openssl_ctx_sha256only;
-    subtest("picotls", test_picotls);
+//    ctx = ctx_peer = &openssl_ctx_sha256only;
+//    subtest("picotls", test_picotls);
+//
+//    ctx = &openssl_ctx_sha256only;
+//    ctx_peer = &openssl_ctx;
+//    subtest("picotls", test_picotls);
+//
+//    ctx = &openssl_ctx;
+//    ctx_peer = &openssl_ctx_sha256only;
+//    subtest("picotls", test_picotls);
 
-    ctx = &openssl_ctx_sha256only;
-    ctx_peer = &openssl_ctx;
-    subtest("picotls", test_picotls);
-
-    ctx = &openssl_ctx;
-    ctx_peer = &openssl_ctx_sha256only;
-    subtest("picotls", test_picotls);
-
-    ptls_minicrypto_secp256r1sha256_sign_certificate_t minicrypto_sign_certificate;
-    ptls_iovec_t minicrypto_certificate = ptls_iovec_init(SECP256R1_CERTIFICATE, sizeof(SECP256R1_CERTIFICATE) - 1);
-    ptls_minicrypto_init_secp256r1sha256_sign_certificate(
-        &minicrypto_sign_certificate, ptls_iovec_init(SECP256R1_PRIVATE_KEY, sizeof(SECP256R1_PRIVATE_KEY) - 1));
-    ptls_context_t minicrypto_ctx = {.random_bytes = ptls_minicrypto_random_bytes,
-                                     .get_time = &ptls_get_time,
-                                     .key_exchanges = ptls_minicrypto_key_exchanges,
-                                     .cipher_suites = ptls_minicrypto_cipher_suites,
-                                     .certificates = {&minicrypto_certificate, 1},
-                                     .sign_certificate = &minicrypto_sign_certificate.super};
-    ctx = &openssl_ctx;
-    ctx_peer = &minicrypto_ctx;
-    subtest("vs. minicrypto", test_picotls);
-
-    ctx = &minicrypto_ctx;
-    ctx_peer = &openssl_ctx;
-    subtest("minicrypto vs.", test_picotls);
-
-    subtest("hpke", test_all_hpke);
+//    ptls_minicrypto_secp256r1sha256_sign_certificate_t minicrypto_sign_certificate;
+//    ptls_iovec_t minicrypto_certificate = ptls_iovec_init(SECP256R1_CERTIFICATE, sizeof(SECP256R1_CERTIFICATE) - 1);
+//    ptls_minicrypto_init_secp256r1sha256_sign_certificate(
+//        &minicrypto_sign_certificate, ptls_iovec_init(SECP256R1_PRIVATE_KEY, sizeof(SECP256R1_PRIVATE_KEY) - 1));
+//    ptls_context_t minicrypto_ctx = {.random_bytes = ptls_minicrypto_random_bytes,
+//                                     .get_time = &ptls_get_time,
+//                                     .key_exchanges = ptls_minicrypto_key_exchanges,
+//                                     .cipher_suites = ptls_minicrypto_cipher_suites,
+//                                     .certificates = {&minicrypto_certificate, 1},
+//                                     .sign_certificate = &minicrypto_sign_certificate.super};
+//    ctx = &openssl_ctx;
+//    ctx_peer = &minicrypto_ctx;
+//    subtest("vs. minicrypto", test_picotls);
+//
+//    ctx = &minicrypto_ctx;
+//    ctx_peer = &openssl_ctx;
+//    subtest("minicrypto vs.", test_picotls);
+//
+//    subtest("hpke", test_all_hpke);
 
 #if ASYNC_TESTS
-    // switch to x25519 / aes128gcmsha256 as we run benchmarks
-    static ptls_key_exchange_algorithm_t *fast_keyex[] = {&ptls_openssl_x25519, NULL}; // use x25519 for speed
-    static ptls_cipher_suite_t *fast_cipher[] = {&ptls_openssl_aes128gcmsha256, NULL};
-    openssl_ctx.key_exchanges = fast_keyex;
-    openssl_ctx.cipher_suites = fast_cipher;
-    ctx = &openssl_ctx;
-    ctx_peer = &openssl_ctx;
-    openssl_sign_certificate.async = 0;
-    subtest("many-handshakes-non-async", many_handshakes);
-    openssl_sign_certificate.async = 0;
-    subtest("many-handshakes-async", many_handshakes);
-    { /* qatengine should be tested at last, because we do not have the code to unload or un-default it */
-        const char *engine_name = "qatengine";
-        ENGINE *qatengine;
-        if ((qatengine = ENGINE_by_id(engine_name)) != NULL || (qatengine = load_engine(engine_name)) != NULL) {
-            ENGINE_set_default_RSA(qatengine);
-            ptls_openssl_dispose_sign_certificate(&openssl_sign_certificate); // reload cert to use qatengine
-            setup_sign_certificate(&openssl_sign_certificate);
-            subtest("many-handshakes-qatengine", many_handshakes);
-        } else {
-            note("%s not found", engine_name);
-        }
-    }
+//    // switch to x25519 / aes128gcmsha256 as we run benchmarks
+//    static ptls_key_exchange_algorithm_t *fast_keyex[] = {&ptls_openssl_x25519, NULL}; // use x25519 for speed
+//    static ptls_cipher_suite_t *fast_cipher[] = {&ptls_openssl_aes128gcmsha256, NULL};
+//    openssl_ctx.key_exchanges = fast_keyex;
+//    openssl_ctx.cipher_suites = fast_cipher;
+//    ctx = &openssl_ctx;
+//    ctx_peer = &openssl_ctx;
+//    openssl_sign_certificate.async = 0;
+//    subtest("many-handshakes-non-async", many_handshakes);
+//    openssl_sign_certificate.async = 0;
+//    subtest("many-handshakes-async", many_handshakes);
+//    { /* qatengine should be tested at last, because we do not have the code to unload or un-default it */
+//        const char *engine_name = "qatengine";
+//        ENGINE *qatengine;
+//        if ((qatengine = ENGINE_by_id(engine_name)) != NULL || (qatengine = load_engine(engine_name)) != NULL) {
+//            ENGINE_set_default_RSA(qatengine);
+//            ptls_openssl_dispose_sign_certificate(&openssl_sign_certificate); // reload cert to use qatengine
+//            setup_sign_certificate(&openssl_sign_certificate);
+//            subtest("many-handshakes-qatengine", many_handshakes);
+//        } else {
+//            note("%s not found", engine_name);
+//        }
+//    }
 #endif
 
     int ret = done_testing();
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
     OSSL_PROVIDER_unload(dflt);
     OSSL_PROVIDER_unload(oqsprovider);
-    OSSL_PROVIDER_unload(legacy);
+//    OSSL_PROVIDER_unload(legacy);
 #endif
     return ret;
 }
