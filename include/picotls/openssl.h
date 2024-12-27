@@ -159,6 +159,8 @@ typedef struct st_ptls_openssl_signature_scheme_t {
 #define PTLS_OPENSSL_HAVE_OQS 1
 #endif
 extern const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[];
+extern const ptls_openssl_signature_scheme_t dilithium3_signature_schemes[];
+extern const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[];
 
 /**
  * Given a private key, returns a list of compatible signature schemes. This list is terminated by scheme_id of UINT16_MAX.
