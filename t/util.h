@@ -46,7 +46,7 @@ static inline void load_providers_default_context() {
     const char *provider_path = "/usr/local/lib64/ossl-modules";
     if (!OSSL_PROVIDER_set_default_search_path(NULL, provider_path)) {
         fprintf(stderr, "Failed to set provider search path: %s\n", provider_path);
-        return;
+        exit(1);
     }
     printf("Provider search path set to: %s\n", provider_path);
 
@@ -54,7 +54,7 @@ static inline void load_providers_default_context() {
     OSSL_PROVIDER *oqsprovider = OSSL_PROVIDER_load(NULL, "oqsprovider");
     if (oqsprovider == NULL) {
         fprintf(stderr, "Failed to load OQS provider.\n");
-        return;
+        exit(1);
     }
     printf("OQS provider successfully loaded.\n");
 
@@ -64,7 +64,7 @@ static inline void load_providers_default_context() {
         fprintf(stderr, "Failed to load default provider.\n");
         // Unload oqsprovider if loading the default provider failed
         OSSL_PROVIDER_unload(oqsprovider);
-        return;
+        exit(1);
     }
     printf("Default provider successfully loaded.\n");
 
