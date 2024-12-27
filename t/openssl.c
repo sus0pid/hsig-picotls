@@ -156,14 +156,11 @@ static void test_oqs_sign_verify(EVP_PKEY *key, const ptls_openssl_signature_sch
         uint8_t sigbuf_small[1024];
 
         ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
-        ok(do_oqs_sign(key, schemes+i, &sigbuf, ptls_iovec_init(message, strlen(message)), NULL) == 0);
+        ok(do_oqs_sign(key, schemes+i, &sigbuf, ptls_iovec_init(message, strlen(message)),
+                       NULL) == 0);
         EVP_PKEY_up_ref(key);
-
-        //        ok(verify_oqs_sign())
-        fprintf(stderr, "[%s]: after do_oqs_sign()\n", __func__);
-        exit(1);
-
-
+        ok(verify_oqs_sign(key, ptls_iovec_init(message, strlen(message)),
+                       ptls_iovec_init(sigbuf.base, sigbuf.off)) == 0);
         ptls_buffer_dispose(&sigbuf);
     }
 }
