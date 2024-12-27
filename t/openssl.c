@@ -156,10 +156,21 @@ static void test_sign_verify(EVP_PKEY *key, const ptls_openssl_signature_scheme_
         uint8_t sigbuf_small[1024];
 
         ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
+#if PTLS_OPENSSL_HAVE_OQS
+        ok(do_oqs_sign(key, schemes+i, &sigbuf, ptls_iovec_init(message, len(message)), NULL) == 0);
+#else
         ok(do_sign(key, schemes + i, &sigbuf, ptls_iovec_init(message, strlen(message)), NULL) == 0);
+#endif
+
         EVP_PKEY_up_ref(key);
+#if PTLS_OPENSSL_HAVE_OQS
+//        ok()
+        fprintf(stderr, "[%s]: after do_oqs_sign()\n", __func__);
+        exit(1);
+#else
         ok(verify_sign(key, schemes[i].scheme_id, ptls_iovec_init(message, strlen(message)),
                        ptls_iovec_init(sigbuf.base, sigbuf.off)) == 0);
+#endif
 
         ptls_buffer_dispose(&sigbuf);
     }
@@ -218,29 +229,26 @@ static void do_test_ecdsa_sign(int nid, const ptls_openssl_signature_scheme_t *s
     EVP_PKEY_free(pkey);
 }
 
-static void do_test_oqs_sign(int nid, const ptls_openssl_signature_scheme_t *schemes)
+static void do_test_oqs_sign(const char *oqssig_name, const ptls_openssl_signature_scheme_t *schemes)
 {
-    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, "dilithium3", NULL);
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, oqssig_name, NULL);
     if (pctx == NULL) {
         fprintf(stderr, "Failed to create PKEY context for Dilithium.\n");
-        return -1;
+        exit(1);
     }
 
     if (EVP_PKEY_keygen_init(pctx) <= 0) {
         fprintf(stderr, "Failed to initialize Dilithium keygen.\n");
         EVP_PKEY_CTX_free(pctx);
-        return -1;
+        exit(1);
     }
 
     EVP_PKEY *pkey = NULL;
-    if (EVP_PKEY_keygen(pctx, &pkey) <= 0) {
+    if (EVP_PKEY_generate(pctx, &pkey) <= 0) {
         fprintf(stderr, "Failed to generate Dilithium key.\n");
     } else {
         printf("Dilithium key generated successfully.\n");
     }
-
-
-
 
     test_sign_verify(pkey, schemes);
     // Clean up
@@ -252,13 +260,7 @@ static void do_test_oqs_sign(int nid, const ptls_openssl_signature_scheme_t *sch
 /* TODO:test oqs signature algo */
 static void test_oqs_sign(void)
 {
-    do_test_ecdsa_sign(NID_X9_62_prime256v1, secp256r1_signature_schemes);
-#if PTLS_OPENSSL_HAVE_SECP384R1
-    do_test_ecdsa_sign(NID_secp384r1, secp384r1_signature_schemes);
-#endif
-#if PTLS_OPENSSL_HAVE_SECP521R1
-    do_test_ecdsa_sign(NID_secp521r1, secp521r1_signature_schemes);
-#endif
+    do_test_ecdsa_sign("dilithium2", dilithium2_signature_schemes);
 }
 
 static void test_ecdsa_sign(void)
@@ -344,37 +346,37 @@ static void test_cert_verify(void)
     X509_STORE_free(store);
 }
 
-/* TODO:test dilithium2 cert verify*/
-static void test_oqs_cert_verify(void)
-{
-    X509 *cert = x509_from_pem(RSA_CERTIFICATE);
-    STACK_OF(X509) *chain = sk_X509_new_null();
-    X509_STORE *store = X509_STORE_new();
-    int ret, ossl_x509_err;
-
-    /* expect fail when no CA is registered */
-    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
-    ok(ret == PTLS_ALERT_UNKNOWN_CA);
-
-    /* expect success after registering the CA */
-    X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
-    ret = X509_LOOKUP_load_file(lookup, "t/assets/test-ca.crt", X509_FILETYPE_PEM);
-    ok(ret);
-    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
-    ok(ret == 0);
-
-#ifdef X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS
-    /* different server_name */
-    ret = verify_cert_chain(store, cert, chain, 0, "test2.example.com", &ossl_x509_err);
-    ok(ret == PTLS_ALERT_BAD_CERTIFICATE);
-#else
-    fprintf(stderr, "**** skipping test for hostname validation failure ***\n");
-#endif
-
-    X509_free(cert);
-    sk_X509_free(chain);
-    X509_STORE_free(store);
-}
+///* TODO:test dilithium2 cert verify*/
+//static void test_oqs_cert_verify(void)
+//{
+//    X509 *cert = x509_from_pem(RSA_CERTIFICATE);
+//    STACK_OF(X509) *chain = sk_X509_new_null();
+//    X509_STORE *store = X509_STORE_new();
+//    int ret, ossl_x509_err;
+//
+//    /* expect fail when no CA is registered */
+//    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+//    ok(ret == PTLS_ALERT_UNKNOWN_CA);
+//
+//    /* expect success after registering the CA */
+//    X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+//    ret = X509_LOOKUP_load_file(lookup, "t/assets/test-ca.crt", X509_FILETYPE_PEM);
+//    ok(ret);
+//    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+//    ok(ret == 0);
+//
+//#ifdef X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS
+//    /* different server_name */
+//    ret = verify_cert_chain(store, cert, chain, 0, "test2.example.com", &ossl_x509_err);
+//    ok(ret == PTLS_ALERT_BAD_CERTIFICATE);
+//#else
+//    fprintf(stderr, "**** skipping test for hostname validation failure ***\n");
+//#endif
+//
+//    X509_free(cert);
+//    sk_X509_free(chain);
+//    X509_STORE_free(store);
+//}
 
 static void setup_certificate(ptls_iovec_t *dst)
 {
@@ -696,6 +698,7 @@ int main(int argc, char **argv)
 
 //    subtest("sha", test_sha);
     subtest("rsa-sign", test_rsa_sign);
+    subtest("oqs-sign", test_oqs_sign);
 //    subtest("ecdsa-sign", test_ecdsa_sign);
 //    subtest("ed25519-sign", test_ed25519_sign);
 //    subtest("cert-verify", test_cert_verify);
