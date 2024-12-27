@@ -1598,13 +1598,42 @@ static X509 *to_x509(ptls_iovec_t vec)
     return d2i_X509(NULL, &p, (long)vec.len);
 }
 
-///* TODO: verify oqs sign */
-//static int verify_oqs_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
-//{
-//
-//}
+/* TODO: verify oqs sign */
+static int verify_oqs_sign(void *verify_ctx, ptls_iovec_t data, ptls_iovec_t signature)
+{
+    EVP_PKEY *key = verify_ctx;
+    EVP_MD_CTX *ctx = NULL;
+    EVP_PKEY_CTX *pkey_ctx = NULL;
+    int ret = 0;
 
-/*TODO: comment out ptls_openssl_lookup_signature_schemes()*/
+    if (data.base == NULL)
+        goto Exit;
+
+    /* we skip the step of looking up sigscheme based on pkey */
+    if ((ctx = EVP_MD_CTX_new()) == NULL) {
+        ret = PTLS_ERROR_NO_MEMORY;
+        goto Exit;
+    }
+    if (EVP_DigestVerifyInit_ex(ctx, NULL, NULL, NULL, NULL, key, NULL) != 1) {
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+    if (EVP_DigestVerifyUpdate(ctx, data.base, data.len) != 1) {
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+    if (EVP_DigestVerifyFinal(ctx, signature.base, signature.len) != 1) {
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+    ret = 0;
+Exit:
+    if (ctx != NULL)
+        EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(key);
+    return ret;
+}
+
 static int verify_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
 {
     EVP_PKEY *key = verify_ctx;
