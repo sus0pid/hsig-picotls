@@ -1053,7 +1053,6 @@ static int do_oqs_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *sch
     }
     outbuf->off += siglen;
     ret = 0;
-    fprintf(stderr, "[%s]: oqs sign successfully!\n", __func__ );
 
 Exit:
     if (ctx != NULL)
@@ -1598,7 +1597,7 @@ static X509 *to_x509(ptls_iovec_t vec)
     return d2i_X509(NULL, &p, (long)vec.len);
 }
 
-/* TODO: verify oqs sign */
+/* verify oqs signature */
 static int verify_oqs_sign(void *verify_ctx, ptls_iovec_t data, ptls_iovec_t signature)
 {
     EVP_PKEY *key = verify_ctx;
