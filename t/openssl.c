@@ -157,7 +157,7 @@ static void test_sign_verify(EVP_PKEY *key, const ptls_openssl_signature_scheme_
 
         ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
 #if PTLS_OPENSSL_HAVE_OQS
-        ok(do_oqs_sign(key, schemes+i, &sigbuf, ptls_iovec_init(message, len(message)), NULL) == 0);
+        ok(do_oqs_sign(key, schemes+i, &sigbuf, ptls_iovec_init(message, strlen(message)), NULL) == 0);
 #else
         ok(do_sign(key, schemes + i, &sigbuf, ptls_iovec_init(message, strlen(message)), NULL) == 0);
 #endif
@@ -260,7 +260,7 @@ static void do_test_oqs_sign(const char *oqssig_name, const ptls_openssl_signatu
 /* TODO:test oqs signature algo */
 static void test_oqs_sign(void)
 {
-    do_test_ecdsa_sign("dilithium2", dilithium2_signature_schemes);
+    do_test_oqs_sign("dilithium2", dilithium2_signature_schemes);
 }
 
 static void test_ecdsa_sign(void)
@@ -641,14 +641,14 @@ int main(int argc, char **argv)
     const char *provider_path = "/usr/local/lib64/ossl-modules";
     if (!OSSL_PROVIDER_set_default_search_path(NULL, provider_path)) {
         fprintf(stderr, "Failed to set provider search path: %s\n", provider_path);
-        return;
+        exit(1);
     }
     printf("Provider search path set to: %s\n", provider_path);
     // Load the OQS provider into the default context
     OSSL_PROVIDER *oqsprovider = OSSL_PROVIDER_load(NULL, "oqsprovider");
     if (oqsprovider == NULL) {
         fprintf(stderr, "Failed to load OQS provider.\n");
-        return;
+        exit(1);
     }
     printf("OQS provider successfully loaded.\n");
 
