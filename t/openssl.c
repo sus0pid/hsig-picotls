@@ -324,6 +324,43 @@ static ptls_key_exchange_context_t *key_from_pem(const char *pem)
     return ctx;
 }
 
+/* TODO: test oqs cert verify */
+static void test_oqs_cert_verify(void)
+{
+    FILE *cert_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.crt", "rb");
+    if (!cert_fp) {
+        perror("Unable to open dilithium cert file!\n");
+        exit(1);
+    }
+    X509 *cert = PEM_read_X509(cert_fp, NULL, NULL, NULL);
+    if (!cert) {
+        rewind(cert_fp);
+        cert = d2i_X509_fp(cert_fp, NULL);
+    }
+    fclose(cert_fp);
+
+    STACK_OF(X509) *chain = sk_X509_new_null();
+    X509_STORE *store = X509_STORE_new();
+    int ret, ossl_x509_err;
+
+    /* expect fail when no CA is registered */
+    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ok(ret == PTLS_ALERT_UNKNOWN_CA);
+
+    /* expect success after registering the CA */
+    X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+    ret = X509_LOOKUP_load_file(lookup, "oqs-cert/ca/dilithium3_CA.crt", X509_FILETYPE_PEM);
+    ok(ret);
+    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ok(ret == 0);
+
+    fprintf(stderr, "**** skipping test for hostname validation failure ***\n");
+    X509_free(cert);
+    sk_X509_free(chain);
+    X509_STORE_free(store);
+}
+
+
 static void test_cert_verify(void)
 {
     X509 *cert = x509_from_pem(RSA_CERTIFICATE);
@@ -355,37 +392,6 @@ static void test_cert_verify(void)
     X509_STORE_free(store);
 }
 
-///* TODO:test dilithium2 cert verify*/
-//static void test_oqs_cert_verify(void)
-//{
-//    X509 *cert = x509_from_pem(RSA_CERTIFICATE);
-//    STACK_OF(X509) *chain = sk_X509_new_null();
-//    X509_STORE *store = X509_STORE_new();
-//    int ret, ossl_x509_err;
-//
-//    /* expect fail when no CA is registered */
-//    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
-//    ok(ret == PTLS_ALERT_UNKNOWN_CA);
-//
-//    /* expect success after registering the CA */
-//    X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
-//    ret = X509_LOOKUP_load_file(lookup, "t/assets/test-ca.crt", X509_FILETYPE_PEM);
-//    ok(ret);
-//    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
-//    ok(ret == 0);
-//
-//#ifdef X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS
-//    /* different server_name */
-//    ret = verify_cert_chain(store, cert, chain, 0, "test2.example.com", &ossl_x509_err);
-//    ok(ret == PTLS_ALERT_BAD_CERTIFICATE);
-//#else
-//    fprintf(stderr, "**** skipping test for hostname validation failure ***\n");
-//#endif
-//
-//    X509_free(cert);
-//    sk_X509_free(chain);
-//    X509_STORE_free(store);
-//}
 
 static void setup_certificate(ptls_iovec_t *dst)
 {
@@ -710,7 +716,8 @@ int main(int argc, char **argv)
     subtest("oqs-sign", test_oqs_sign);
 //    subtest("ecdsa-sign", test_ecdsa_sign);
 //    subtest("ed25519-sign", test_ed25519_sign);
-//    subtest("cert-verify", test_cert_verify);
+    subtest("cert-verify", test_cert_verify);
+    subtest("oqs-cert-verify", test_oqs_cert_verify);
 //    subtest("picotls", test_picotls);
 
 //    ctx = ctx_peer = &openssl_ctx_sha256only;
