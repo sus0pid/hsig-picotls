@@ -334,8 +334,8 @@ static void test_oqs_cert_verify(void)
     }
     X509 *cert = PEM_read_X509(cert_fp, NULL, NULL, NULL);
     if (!cert) {
-        rewind(cert_fp);
-        cert = d2i_X509_fp(cert_fp, NULL);
+        perror("Read dilithium cert file failure!\n");
+        exit(1);
     }
     fclose(cert_fp);
 
