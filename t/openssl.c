@@ -251,11 +251,8 @@ static void do_test_oqs_sign(const char *oqssig_name, const ptls_openssl_signatu
     }
 
     EVP_PKEY *pkey = NULL;
-    if (EVP_PKEY_generate(pctx, &pkey) <= 0) {
+    if (EVP_PKEY_generate(pctx, &pkey) <= 0)
         fprintf(stderr, "Failed to generate Dilithium key.\n");
-    } else {
-        printf("Dilithium key generated successfully.\n");
-    }
 
     test_oqs_sign_verify(pkey, schemes);
     // Clean up
@@ -324,7 +321,7 @@ static ptls_key_exchange_context_t *key_from_pem(const char *pem)
     return ctx;
 }
 
-/* TODO: test oqs cert verify */
+/* test oqs cert verify */
 static void test_oqs_cert_verify(void)
 {
     FILE *cert_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.crt", "rb");
@@ -354,7 +351,6 @@ static void test_oqs_cert_verify(void)
     ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
     ok(ret == 0);
 
-    fprintf(stderr, "**** skipping test for hostname validation failure ***\n");
     X509_free(cert);
     sk_X509_free(chain);
     X509_STORE_free(store);
@@ -392,6 +388,41 @@ static void test_cert_verify(void)
     X509_STORE_free(store);
 }
 
+/* set up oqs certificate */
+static void setup_oqs_certificate(ptls_iovec_t *dst)
+{
+    FILE *cert_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.crt", "rb");
+    if (!cert_fp) {
+        perror("Unable to open dilithium cert file!\n");
+        exit(1);
+    }
+    X509 *cert = PEM_read_X509(cert_fp, NULL, NULL, NULL);
+    if (!cert) {
+        perror("Read dilithium cert file failure!\n");
+        exit(1);
+    }
+    fclose(cert_fp);
+
+    dst->base = NULL;
+    dst->len = i2d_X509(cert, &dst->base);
+
+    X509_free(cert);
+}
+
+/* TODO: set up oqs private key */
+static void setup_oqs_sign_certificate(ptls_openssl_sign_certificate_t *sc)
+{
+    FILE *key_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.key", "rb");
+    if (!key_fp) {
+        perror("Unable to open dilithium cert file!\n");
+        exit(1);
+    }
+    EVP_PKEY *pkey = PEM_read_PrivateKey(key_fp, NULL, NULL, NULL);
+    fclose(key_fp);
+    assert(pkey != NULL || !"failed to load oqs private key");
+
+
+}
 
 static void setup_certificate(ptls_iovec_t *dst)
 {
