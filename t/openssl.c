@@ -391,7 +391,7 @@ static void test_cert_verify(void)
 /* set up oqs certificate */
 static void setup_oqs_certificate(ptls_iovec_t *dst, const char *sig_name)
 {
-    const char *certpath = NULL;
+    char certpath[300];
     const char *basedir = "oqs-cert/";
     const char *sep = "/";
     sprintf(certpath, "%s%s%s%s%s%s", basedir, sep, sig_name, sep, sig_name, "_srv.crt");
@@ -417,7 +417,7 @@ static void setup_oqs_certificate(ptls_iovec_t *dst, const char *sig_name)
 
 static void setup_oqs_sign_certificate(ptls_openssl_sign_certificate_t *sc, const char *sig_name)
 {
-    const char *keypath = NULL;
+    char *keypath[300];
     const char *basedir = "oqs-cert/";
     const char *sep = "/";
     sprintf(keypath, "%s%s%s%s%s%s", basedir, sep, sig_name, sep, sig_name, "_srv.key");
