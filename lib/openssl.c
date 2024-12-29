@@ -169,6 +169,27 @@ static const uint16_t default_signature_schemes[] = {
     PTLS_SIGNATURE_DILITHIUM5,
     UINT16_MAX};
 
+/* input: sig_name, output: schemes */
+const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_oqs_signature_schemes(const char *sig_name)
+{
+    const ptls_openssl_signature_scheme_t *schemes = NULL;
+
+    if (strcmp(sig_name, "dilithium2") == 0)
+        schemes = dilithium2_signature_schemes;
+    else if (strcmp(sig_name, "dilithium3") == 0)
+        schemes = dilithium3_signature_schemes;
+    else if (strcmp(sig_name, "dilithium5") == 0)
+        schemes = dilithium5_signature_schemes;
+    else
+        fprintf(stderr, "Unknown oqs siganture scheme: %s\n", sig_name);
+
+    return schemes;
+}
+
+
+
+
+
 const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_signature_schemes(EVP_PKEY *key)
 {
     const ptls_openssl_signature_scheme_t *schemes = NULL;
@@ -1713,14 +1734,11 @@ Exit:
 }
 
 /* initiate oqs signature algo for signing operation */
-int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key,
-                                       const ptls_openssl_signature_scheme_t *oqs_schemes)
+int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key, const char *sig_name)
 {
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
-    if (oqs_schemes != NULL)
-        self->schemes = oqs_schemes;
-    else
+    if ((self->schemes = ptls_openssl_lookup_oqs_signature_schemes(sig_name)) == NULL)
         return PTLS_ERROR_INCOMPATIBLE_KEY;
 
     EVP_PKEY_up_ref(key);
