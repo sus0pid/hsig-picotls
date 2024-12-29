@@ -326,12 +326,12 @@ static void test_oqs_cert_verify(void)
 {
     FILE *cert_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.crt", "rb");
     if (!cert_fp) {
-        perror("Unable to open dilithium cert file!\n");
+        fprintf(stderr, "Unable to open %s key file!\n", sig_name);
         exit(1);
     }
     X509 *cert = PEM_read_X509(cert_fp, NULL, NULL, NULL);
     if (!cert) {
-        perror("Read dilithium cert file failure!\n");
+        fprintf(stderr, "Unabel to read %s cert file!\n", sig_name);
         exit(1);
     }
     fclose(cert_fp);
@@ -399,12 +399,12 @@ static void setup_oqs_certificate(ptls_iovec_t *dst, const char *sig_name)
 
     FILE *cert_fp = fopen(certpath, "rb");
     if (!cert_fp) {
-        perror("Unable to open %s cert file!\n", sig_name);
+        fprintf(stderr, "Unable to open %s cert file!\n", sig_name);
         exit(1);
     }
     X509 *cert = PEM_read_X509(cert_fp, NULL, NULL, NULL);
     if (!cert) {
-        perror("Read %s cert file failure!\n", sig_name);
+        fprintf(stderr, "Unable to read %s cert file!\n", sig_name);
         exit(1);
     }
     fclose(cert_fp);
