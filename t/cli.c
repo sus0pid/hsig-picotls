@@ -514,8 +514,8 @@ int main(int argc, char **argv)
             break;
         case 'k':
             // test oqs sig algo: dilithium2
-            const ptls_openssl_signature_scheme_t *oqs_schemes = dilithium2_signature_schemes;
-            load_private_key(&ctx, optarg, is_oqs, oqs_schemes);
+            const char *sig_name = "dilithium2";
+            load_private_key(&ctx, optarg, is_oqs, sig_name);
             break;
         case 'n':
             hsprop.client.negotiate_before_key_exchange = 1;
