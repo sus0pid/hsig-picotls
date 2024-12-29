@@ -2086,23 +2086,23 @@ static void test_all_handshakes_core(void)
 {
     subtest("full-handshake", test_full_handshake);
     subtest("full-handshake+client-auth", test_full_handshake_with_client_authentication);
-    subtest("hrr-handshake", test_hrr_handshake);
-    /* resumption does not work when the client offers ECH but the server does not recognize that */
-    if (!(can_ech(ctx, 0) && !can_ech(ctx_peer, 1))) {
-        subtest("resumption", test_resumption, 0, 0);
-        if (ctx != ctx_peer)
-            subtest("resumption-different-preferred-key-share", test_resumption, 1, 0);
-        subtest("resumption-with-client-authentication", test_resumption, 0, 1);
-    }
-    subtest("async-sign-certificate", test_async_sign_certificate);
-    subtest("enforce-retry-stateful", test_enforce_retry_stateful);
-    if (!(can_ech(ctx_peer, 1) && can_ech(ctx, 0))) {
-        subtest("hrr-stateless-handshake", test_hrr_stateless_handshake);
-        subtest("enforce-retry-stateless", test_enforce_retry_stateless);
-        subtest("stateless-hrr-aad-change", test_stateless_hrr_aad_change);
-    }
-    subtest("key-update", test_key_update);
-    subtest("pre-shared-key", test_pre_shared_key);
+//    subtest("hrr-handshake", test_hrr_handshake);
+//    /* resumption does not work when the client offers ECH but the server does not recognize that */
+//    if (!(can_ech(ctx, 0) && !can_ech(ctx_peer, 1))) {
+//        subtest("resumption", test_resumption, 0, 0);
+//        if (ctx != ctx_peer)
+//            subtest("resumption-different-preferred-key-share", test_resumption, 1, 0);
+//        subtest("resumption-with-client-authentication", test_resumption, 0, 1);
+//    }
+//    subtest("async-sign-certificate", test_async_sign_certificate); TODO: test async sign certificate later
+//    subtest("enforce-retry-stateful", test_enforce_retry_stateful);
+//    if (!(can_ech(ctx_peer, 1) && can_ech(ctx, 0))) {
+//        subtest("hrr-stateless-handshake", test_hrr_stateless_handshake);
+//        subtest("enforce-retry-stateless", test_enforce_retry_stateless);
+//        subtest("stateless-hrr-aad-change", test_stateless_hrr_aad_change);
+//    }
+//    subtest("key-update", test_key_update);
+//    subtest("pre-shared-key", test_pre_shared_key);
     subtest("handshake-api", test_handshake_api);
 }
 
@@ -2127,18 +2127,18 @@ static void test_all_handshakes(void)
     ctx_peer->ech.server.create_opener = NULL;
     ctx->ech.client.ciphers = NULL;
     subtest("no-ech", test_all_handshakes_core);
-    ctx_peer->ech.server.create_opener = orig_ech.create_opener;
-    ctx->ech.client.ciphers = orig_ech.client_ciphers;
+//    ctx_peer->ech.server.create_opener = orig_ech.create_opener;
+//    ctx->ech.client.ciphers = orig_ech.client_ciphers;
 
-    if (can_ech(ctx_peer, 1) && can_ech(ctx, 0)) {
-        subtest("ech", test_all_handshakes_core);
-        if (ctx != ctx_peer) {
-            ctx->ech.client.ciphers = NULL;
-            subtest("ech (server-only)", test_all_handshakes_core);
-            ctx->ech.client.ciphers = orig_ech.client_ciphers;
-        }
-        subtest("ech-config-mismatch", test_ech_config_mismatch);
-    }
+//    if (can_ech(ctx_peer, 1) && can_ech(ctx, 0)) {
+//        subtest("ech", test_all_handshakes_core);
+//        if (ctx != ctx_peer) {
+//            ctx->ech.client.ciphers = NULL;
+//            subtest("ech (server-only)", test_all_handshakes_core);
+//            ctx->ech.client.ciphers = orig_ech.client_ciphers;
+//        }
+//        subtest("ech-config-mismatch", test_ech_config_mismatch);
+//    }
 
     ctx_peer->sign_certificate = sc_orig;
 

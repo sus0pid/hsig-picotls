@@ -670,8 +670,24 @@ Exit:
 
 #endif
 
+void usage(const char *program_name) {
+    printf("Usage: %s [options]\n", program_name);
+    printf("Options:\n");
+    printf("  -h, --help     Display this help message\n");
+    printf("  0              Test openssl with traditional signature algorithms\n");
+    printf("  1              Test openssl with oqs signature algorithms\n");
+    // Add more options here as needed
+}
+
 int main(int argc, char **argv)
 {
+    if ((argc == 1) || (argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0))) {
+        usage(argv[0]);
+        return 0;
+    }
+
+    int is_oqs = atoi(argv[1]);
+
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
     ptls_ech_create_opener_t ech_create_opener = {.cb = create_ech_opener};
@@ -711,8 +727,17 @@ int main(int argc, char **argv)
 //    subtest("key-exchange", test_key_exchanges);
 
     ptls_iovec_t cert;
-    setup_certificate(&cert);
-    setup_sign_certificate(&openssl_sign_certificate);
+    if (is_oqs)
+    {
+        /* test with oqs cert and private key */
+        setup_oqs_certificate(&cert);
+        setup_oqs_sign_certificate(&openssl_sign_certificate);
+    } else
+    {
+        setup_certificate(&cert);
+        setup_sign_certificate(&openssl_sign_certificate);
+    }
+
     X509_STORE *cert_store = X509_STORE_new();
     X509_STORE_set_verify_cb(cert_store, verify_cert_cb);
     ptls_openssl_init_verify_certificate(&openssl_verify_certificate, cert_store);
@@ -749,7 +774,7 @@ int main(int argc, char **argv)
 //    subtest("ed25519-sign", test_ed25519_sign);
     subtest("cert-verify", test_cert_verify);
     subtest("oqs-cert-verify", test_oqs_cert_verify);
-//    subtest("picotls", test_picotls);
+    subtest("picotls", test_picotls);
 
 //    ctx = ctx_peer = &openssl_ctx_sha256only;
 //    subtest("picotls", test_picotls);
