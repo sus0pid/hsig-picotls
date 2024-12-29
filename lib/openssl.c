@@ -129,7 +129,6 @@ static const ptls_openssl_signature_scheme_t ed25519_signature_schemes[] = {{PTL
 //    {PTLS_SIGNATURE_DILITHIUM5, NULL}, /* Dilithium5 */
 //    {UINT16_MAX, NULL} /* Termination */
 //};
-#if PTLS_OPENSSL_HAVE_OQS
 const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM2, NULL},
     {UINT16_MAX, NULL} /* Termination */
@@ -142,7 +141,7 @@ const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM5, NULL},
     {UINT16_MAX, NULL} /* Termination */
 };
-#endif
+
 
 
 
@@ -1623,7 +1622,6 @@ static int verify_oqs_sign(void *verify_ctx, ptls_iovec_t data, ptls_iovec_t sig
 {
     EVP_PKEY *key = verify_ctx;
     EVP_MD_CTX *ctx = NULL;
-    EVP_PKEY_CTX *pkey_ctx = NULL;
     int ret = 0;
 
     if (data.base == NULL)
