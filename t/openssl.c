@@ -389,16 +389,22 @@ static void test_cert_verify(void)
 }
 
 /* set up oqs certificate */
-static void setup_oqs_certificate(ptls_iovec_t *dst)
+static void setup_oqs_certificate(ptls_iovec_t *dst, const char *sig_name)
 {
-    FILE *cert_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.crt", "rb");
+    const char *certpath = NULL;
+    const char *basedir = "oqs-cert/";
+    const char *sep = "/";
+    sprintf(certpath, "%s%s%s%s%s%s", basedir, sep, sig_name, sep, sig_name, "_srv.crt");
+    printf("certpath: %s", certpath);
+
+    FILE *cert_fp = fopen(certpath, "rb");
     if (!cert_fp) {
-        perror("Unable to open dilithium cert file!\n");
+        perror("Unable to open %s cert file!\n", sig_name);
         exit(1);
     }
     X509 *cert = PEM_read_X509(cert_fp, NULL, NULL, NULL);
     if (!cert) {
-        perror("Read dilithium cert file failure!\n");
+        perror("Read %s cert file failure!\n", sig_name);
         exit(1);
     }
     fclose(cert_fp);
@@ -409,19 +415,26 @@ static void setup_oqs_certificate(ptls_iovec_t *dst)
     X509_free(cert);
 }
 
-/* TODO: set up oqs private key */
-static void setup_oqs_sign_certificate(ptls_openssl_sign_certificate_t *sc)
+static void setup_oqs_sign_certificate(ptls_openssl_sign_certificate_t *sc, const char *sig_name)
 {
-    FILE *key_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.key", "rb");
+    const char *keypath = NULL;
+    const char *basedir = "oqs-cert/";
+    const char *sep = "/";
+    sprintf(keypath, "%s%s%s%s%s%s", basedir, sep, sig_name, sep, sig_name, "_srv.key");
+    printf("keypath: %s", keypath);
+
+    FILE *key_fp = fopen(keypath, "rb");
     if (!key_fp) {
-        perror("Unable to open dilithium cert file!\n");
+        perror("Unable to open %s key file!\n", sig_name);
         exit(1);
     }
     EVP_PKEY *pkey = PEM_read_PrivateKey(key_fp, NULL, NULL, NULL);
     fclose(key_fp);
     assert(pkey != NULL || !"failed to load oqs private key");
 
+    ptls_openssl_init_oqs_sign_certificate(sc, pkey, sig_name);
 
+    EVP_PKEY_free(pkey);
 }
 
 static void setup_certificate(ptls_iovec_t *dst)
@@ -727,11 +740,12 @@ int main(int argc, char **argv)
 //    subtest("key-exchange", test_key_exchanges);
 
     ptls_iovec_t cert;
+    const char *sig_name = "dilithium3";
     if (is_oqs)
     {
         /* test with oqs cert and private key */
-        setup_oqs_certificate(&cert);
-        setup_oqs_sign_certificate(&openssl_sign_certificate);
+        setup_oqs_certificate(&cert, sig_name);
+        setup_oqs_sign_certificate(&openssl_sign_certificate, sig_name);
     } else
     {
         setup_certificate(&cert);
@@ -767,13 +781,20 @@ int main(int argc, char **argv)
     ADD_FFX_CHACHA20_ALGORITHMS(openssl);
 #endif
 
+    if (!is_oqs)
+    {
+        subtest("rsa-sign", test_rsa_sign);
+        subtest("cert-verify", test_cert_verify);
+    }
+    else {
+        subtest("oqs-sign", test_oqs_sign);
+        subtest("oqs-cert-verify", test_oqs_cert_verify);
+    }
+
 //    subtest("sha", test_sha);
-    subtest("rsa-sign", test_rsa_sign);
-    subtest("oqs-sign", test_oqs_sign);
 //    subtest("ecdsa-sign", test_ecdsa_sign);
 //    subtest("ed25519-sign", test_ed25519_sign);
-    subtest("cert-verify", test_cert_verify);
-    subtest("oqs-cert-verify", test_oqs_cert_verify);
+    /* test picotls handshake with/wo oqs */
     subtest("picotls", test_picotls);
 
 //    ctx = ctx_peer = &openssl_ctx_sha256only;
