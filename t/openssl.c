@@ -425,12 +425,15 @@ static void setup_oqs_sign_certificate(ptls_openssl_sign_certificate_t *sc, cons
 
     FILE *key_fp = fopen(keypath, "rb");
     if (!key_fp) {
-        perror("Unable to open %s key file!\n", sig_name);
+        fprintf(stderr, "Unable to open %s key file!\n", sig_name);
         exit(1);
     }
     EVP_PKEY *pkey = PEM_read_PrivateKey(key_fp, NULL, NULL, NULL);
     fclose(key_fp);
-    assert(pkey != NULL || !"failed to load oqs private key");
+    if (!pkey) {
+        fprintf(stderr, "Unable to read %s key file!\n", sig_name);
+        exit(1);
+    }
 
     ptls_openssl_init_oqs_sign_certificate(sc, pkey, sig_name);
 
