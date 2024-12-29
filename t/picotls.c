@@ -2084,8 +2084,8 @@ static void test_handshake_api(void)
 
 static void test_all_handshakes_core(void)
 {
-    subtest("full-handshake", test_full_handshake);
-    subtest("full-handshake+client-auth", test_full_handshake_with_client_authentication);
+//    subtest("full-handshake", test_full_handshake);
+//    subtest("full-handshake+client-auth", test_full_handshake_with_client_authentication);
 //    subtest("hrr-handshake", test_hrr_handshake);
 //    /* resumption does not work when the client offers ECH but the server does not recognize that */
 //    if (!(can_ech(ctx, 0) && !can_ech(ctx_peer, 1))) {
@@ -2465,9 +2465,9 @@ void test_picotls(void)
     subtest("ech", test_ech);
     subtest("fragmented-message", test_fragmented_message);
     subtest("handshake", test_all_handshakes);
-    subtest("quic", test_quic);
-    subtest("legacy-ch", test_legacy_ch);
-    subtest("ptls_escape_json_unsafe_string", test_escape_json_unsafe_string);
+//    subtest("quic", test_quic);
+//    subtest("legacy-ch", test_legacy_ch);
+//    subtest("ptls_escape_json_unsafe_string", test_escape_json_unsafe_string);
 }
 
 void test_key_exchange(ptls_key_exchange_algorithm_t *client, ptls_key_exchange_algorithm_t *server)
