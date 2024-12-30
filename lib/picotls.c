@@ -1960,11 +1960,14 @@ Exit:
     return ret;
 }
 
+/* xs: added oqs signature algorithms in client hello */
 static int push_signature_algorithms(ptls_verify_certificate_t *vc, ptls_buffer_t *sendbuf)
 {
     /* The list sent when verify callback is not registered */
     static const uint16_t default_algos[] = {PTLS_SIGNATURE_RSA_PSS_RSAE_SHA256, PTLS_SIGNATURE_ECDSA_SECP256R1_SHA256,
-                                             PTLS_SIGNATURE_RSA_PKCS1_SHA256, PTLS_SIGNATURE_RSA_PKCS1_SHA1, UINT16_MAX};
+                                             PTLS_SIGNATURE_RSA_PKCS1_SHA256, PTLS_SIGNATURE_RSA_PKCS1_SHA1,
+                                             PTLS_SIGNATURE_DILITHIUM2, PTLS_SIGNATURE_DILITHIUM3,
+                                             PTLS_SIGNATURE_DILITHIUM5,UINT16_MAX};
     int ret;
 
     ptls_buffer_push_block(sendbuf, 2, {
@@ -2240,6 +2243,7 @@ static int encode_client_hello(ptls_context_t *ctx, ptls_buffer_t *sendbuf, enum
                         ptls_buffer_push16(sendbuf, supported_versions[i]);
                 });
             });
+            /* xs: added oqs sig algos to supported signature algorithms in client hello */
             buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_SIGNATURE_ALGORITHMS, {
                 if ((ret = push_signature_algorithms(ctx->verify_certificate, sendbuf)) != 0)
                     goto Exit;
@@ -2343,9 +2347,11 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     if (tls->server_name != NULL && !ptls_server_name_is_ipaddr(tls->server_name))
         sni_name = tls->server_name;
+    printf("[%s]: sni_name = %s\n!", __func__, sni_name);
 
     /* try to use ECH (ignore broken ECHConfigList; it is delivered insecurely) */
     if (properties != NULL) {
+        printf("[%s]: use ECH, %d\n", __func__, __LINE__);
         if (!is_second_flight && sni_name != NULL && tls->ctx->ech.client.ciphers != NULL) {
             if (properties->client.ech.configs.len != 0) {
                 struct st_decoded_ech_config_t decoded;
@@ -2364,6 +2370,7 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     /* use external PSK if provided */
     if (tls->ctx->pre_shared_key.identity.base != NULL) {
+        printf("[%s]: use externel psk, %d\n", __func__, __LINE__);
         if (!is_second_flight) {
             tls->client.offered_psk = 1;
             for (size_t i = 0; tls->ctx->cipher_suites[i] != NULL; ++i) {
@@ -2388,6 +2395,7 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
     /* try to setup resumption-related data, unless external PSK is used */
     if (psk.secret.base == NULL && properties != NULL && properties->client.session_ticket.base != NULL &&
         tls->ctx->key_exchanges != NULL) {
+        printf("[%s]: try to set up resumption-related data, %d\n", __func__, __LINE__);
         ptls_key_exchange_algorithm_t *key_share = NULL;
         ptls_cipher_suite_t *cipher_suite = NULL;
         uint32_t max_early_data_size;
@@ -2411,6 +2419,7 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     /* send 0-RTT related signals back to the client */
     if (properties != NULL) {
+        printf("[%s]: send 0-rtt related signals back to client, %d\n", __func__, __LINE__);
         if (tls->client.using_early_data) {
             properties->client.early_data_acceptance = PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN;
         } else {
@@ -2422,18 +2431,22 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     /* use the default key share if still not undetermined */
     if (tls->key_share == NULL && tls->ctx->key_exchanges != NULL &&
-        !(properties != NULL && properties->client.negotiate_before_key_exchange))
+        !(properties != NULL && properties->client.negotiate_before_key_exchange)) {
+        printf("[%s]: use default key share, %d\n", __func__, __LINE__);
         tls->key_share = tls->ctx->key_exchanges[0];
+    }
 
     /* instantiate key share context */
     assert(tls->client.key_share_ctx == NULL);
     if (tls->key_share != NULL) {
+        printf("[%s]: generate key share, %d\n", __func__, __LINE__);
         if ((ret = tls->key_share->create(tls->key_share, &tls->client.key_share_ctx)) != 0)
             goto Exit;
     }
 
     /* initialize key schedule */
     if (!is_second_flight) {
+        printf("[%s]: initialize key schedule, %d\n", __func__, __LINE__);
         if ((tls->key_schedule = key_schedule_new(tls->cipher_suite, tls->ctx->cipher_suites, tls->ech.aead != NULL)) == NULL) {
             ret = PTLS_ERROR_NO_MEMORY;
             goto Exit;
