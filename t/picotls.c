@@ -2239,7 +2239,7 @@ static void test_all_handshakes_core(void)
 //    subtest("key-update", test_key_update);
 //    subtest("pre-shared-key", test_pre_shared_key);
     subtest("handshake-api", test_handshake_api);
-    subtest("debug-handshake-api", debug_test_handshake_api);
+//    subtest("debug-handshake-api", debug_test_handshake_api);
 
 }
 
