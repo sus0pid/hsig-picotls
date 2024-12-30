@@ -1836,6 +1836,7 @@ static int feed_messages(ptls_t *tls, ptls_buffer_t *outbuf, size_t *out_epoch_o
 
 static void debug_test_handshake_api(void)
 {
+
     ptls_t *client, *server;
     traffic_secrets_t client_secrets = {{{0}}}, server_secrets = {{{0}}};
     ptls_buffer_t cbuf, sbuf;
@@ -1848,14 +1849,13 @@ static void debug_test_handshake_api(void)
     ctx->update_traffic_key = &update_traffic_key;
     ctx->omit_end_of_early_data = 1;
     ctx->save_ticket = &save_ticket;
-    //    ctx->save_ticket = NULL;
     ctx_peer->update_traffic_key = &update_traffic_key;
     ctx_peer->omit_end_of_early_data = 1;
     ctx_peer->encrypt_ticket = &encrypt_ticket;
     ctx_peer->ticket_lifetime = 86400;
     ctx_peer->max_early_data_size = 8192;
 
-    saved_ticket = ptls_iovec_init(NULL, 0);
+    memset(saved_tickets, 0, sizeof(saved_tickets));
 
     ptls_buffer_init(&cbuf, "", 0);
     ptls_buffer_init(&sbuf, "", 0);
