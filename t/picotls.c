@@ -1834,6 +1834,32 @@ static int feed_messages(ptls_t *tls, ptls_buffer_t *outbuf, size_t *out_epoch_o
     return ret;
 }
 
+void print_traffic_secrets(const traffic_secrets_t secrets) {
+    for (int is_enc = 0; is_enc < 2; ++is_enc) {
+        for (int epoch = 0; epoch < 4; ++epoch) {
+            printf("is_enc=%d, epoch=%d:\n", is_enc, epoch);
+            for (size_t i = 0; i < PTLS_MAX_DIGEST_SIZE; ++i) {
+                printf("%02x ", secrets[is_enc][epoch][i]);
+                if ((i + 1) % 8 == 0) {
+                    printf("\n");
+                }
+            }
+            printf("\n");
+        }
+    }
+}
+
+void print_base(uint8_t *base, size_t len) {
+    for (size_t i = 0; i < len; ++i) {
+        printf("%.2x ", (int)base[i]);
+        if (i % 4 == 3)
+            printf(" ");
+        if (i %16 == 15)
+            printf("\n");
+    }
+    printf("\n");
+}
+
 static void debug_test_handshake_api(void)
 {
 
