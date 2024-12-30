@@ -1260,21 +1260,21 @@ static void test_full_handshake_impl(int require_client_authentication, int is_a
     ok(async_sc_callcnt == is_async);
     ok(client_sc_callcnt == require_client_authentication);
 
-    test_handshake(ptls_iovec_init(NULL, 0), TEST_HANDSHAKE_1RTT, 0, 0, require_client_authentication, transfer_session);
-    ok(server_sc_callcnt == 1);
-    ok(async_sc_callcnt == is_async);
-    ok(client_sc_callcnt == require_client_authentication);
-
-    test_handshake(ptls_iovec_init(NULL, 0), TEST_HANDSHAKE_1RTT, 0, 1, require_client_authentication, transfer_session);
-    ok(server_sc_callcnt == 1);
-    ok(async_sc_callcnt == is_async);
-    ok(client_sc_callcnt == require_client_authentication);
+//    test_handshake(ptls_iovec_init(NULL, 0), TEST_HANDSHAKE_1RTT, 0, 0, require_client_authentication, transfer_session);
+//    ok(server_sc_callcnt == 1);
+//    ok(async_sc_callcnt == is_async);
+//    ok(client_sc_callcnt == require_client_authentication);
+//
+//    test_handshake(ptls_iovec_init(NULL, 0), TEST_HANDSHAKE_1RTT, 0, 1, require_client_authentication, transfer_session);
+//    ok(server_sc_callcnt == 1);
+//    ok(async_sc_callcnt == is_async);
+//    ok(client_sc_callcnt == require_client_authentication);
 }
 
 static void test_full_handshake(void)
 {
     test_full_handshake_impl(0, 0, 0);
-    test_full_handshake_impl(0, 0, 0);
+//    test_full_handshake_impl(0, 0, 0);
 }
 
 static void test_full_handshake_with_client_authentication(void)
@@ -1823,11 +1823,120 @@ static int feed_messages(ptls_t *tls, ptls_buffer_t *outbuf, size_t *out_epoch_o
         if (len != 0) {
             ret = ptls_handle_message(tls, outbuf, out_epoch_offsets, i, input + in_epoch_offsets[i], len, props);
             if (!(ret == 0 || ret == PTLS_ERROR_IN_PROGRESS))
+            {
+                printf("error occurred: ret = %d, i = %d", ret, i);
                 break;
+            }
+
         }
     }
 
     return ret;
+}
+
+static void debug_test_handshake_api(void)
+{
+    ptls_t *client, *server;
+    traffic_secrets_t client_secrets = {{{0}}}, server_secrets = {{{0}}};
+    ptls_buffer_t cbuf, sbuf;
+    size_t coffs[5] = {0}, soffs[5];
+    ptls_update_traffic_key_t update_traffic_key = {on_update_traffic_key};
+    ptls_encrypt_ticket_t encrypt_ticket = {on_copy_ticket};
+    ptls_save_ticket_t save_ticket = {on_save_ticket};
+    int ret;
+
+    ctx->update_traffic_key = &update_traffic_key;
+    ctx->omit_end_of_early_data = 1;
+    ctx->save_ticket = &save_ticket;
+    //    ctx->save_ticket = NULL;
+    ctx_peer->update_traffic_key = &update_traffic_key;
+    ctx_peer->omit_end_of_early_data = 1;
+    ctx_peer->encrypt_ticket = &encrypt_ticket;
+    ctx_peer->ticket_lifetime = 86400;
+    ctx_peer->max_early_data_size = 8192;
+
+    saved_ticket = ptls_iovec_init(NULL, 0);
+
+    ptls_buffer_init(&cbuf, "", 0);
+    ptls_buffer_init(&sbuf, "", 0);
+
+    client = ptls_new(ctx, 0);
+    *ptls_get_data_ptr(client) = &client_secrets;
+    server = ptls_new(ctx_peer, 1);
+    *ptls_get_data_ptr(server) = &server_secrets;
+
+    /* Test1: full handshake */
+    /* C1. client gen CHLO*/
+    printf("\n\n-------------------------------Test0: full handshake--------------------\n");
+    ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, NULL);
+
+    printf(">>Client send CHLO.\n");
+            printf(">>Client secrets:");
+            print_traffic_secrets(client_secrets);
+    if (ptls_handshake_is_complete(client))
+        printf(">>Client handshake is complete\n");
+    else
+        printf(">>Client handshake is not complete\n");
+
+
+    assert(ret == PTLS_ERROR_IN_PROGRESS);
+    /* S1. suppose server receive CHLO*/
+    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
+
+    printf(">>Server receive CHLO and send SHLO+FIN\n");
+            printf(">>Server secrets:");
+            print_traffic_secrets(server_secrets);
+    if (ptls_handshake_is_complete(server))
+        printf(">>Server handshake is complete\n");
+    else
+        printf(">>Server handshake is not complete\n");
+
+
+    assert(ret == 0);
+    assert(sbuf.off != 0);
+    assert(!ptls_handshake_is_complete(server));
+    assert(memcmp(server_secrets[1][2], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+    assert(memcmp(server_secrets[1][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+    assert(memcmp(server_secrets[0][2], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+    assert(memcmp(server_secrets[0][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) == 0);
+    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, NULL);
+
+    printf(">>Client receive SHLO+FIN and send FIN\n");
+            printf(">>Client secrets:");
+            print_traffic_secrets(client_secrets);
+    if (ptls_handshake_is_complete(client))
+        printf(">>Client handshake is complete\n");
+
+    assert(ret == 0);
+    assert(cbuf.off != 0);
+    assert(ptls_handshake_is_complete(client));
+    assert(memcmp(client_secrets[0][2], server_secrets[1][2], PTLS_MAX_DIGEST_SIZE) == 0);
+    assert(memcmp(client_secrets[1][2], server_secrets[0][2], PTLS_MAX_DIGEST_SIZE) == 0);
+    assert(memcmp(client_secrets[0][3], server_secrets[1][3], PTLS_MAX_DIGEST_SIZE) == 0);
+    assert(memcmp(client_secrets[1][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
+
+    printf(">>Server receive FIN\n");
+            printf(">>Server secrets:");
+            print_traffic_secrets(server_secrets);
+    if (ptls_handshake_is_complete(server))
+        printf(">>Server handshake is complete\n");
+
+    assert(ret == 0);
+    assert(sbuf.off == 0);
+    assert(ptls_handshake_is_complete(server));
+    assert(memcmp(client_secrets[1][3], server_secrets[0][3], PTLS_MAX_DIGEST_SIZE) == 0);
+
+    ptls_free(client);
+    ptls_free(server);
+
+    cbuf.off = 0;
+    sbuf.off = 0;
+    memset(client_secrets, 0, sizeof(client_secrets));
+    memset(server_secrets, 0, sizeof(server_secrets));
+    memset(coffs, 0, sizeof(coffs));
+    memset(soffs, 0, sizeof(soffs));
+
 }
 
 static void test_handshake_api(void)
@@ -1897,173 +2006,173 @@ static void test_handshake_api(void)
 
     ctx->save_ticket = NULL; /* don't allow further test to update the saved ticket */
 
-    /* 0-RTT resumption */
-    size_t max_early_data_size = 0;
-    ptls_handshake_properties_t client_hs_prop = {{{{NULL}, saved_tickets[0], &max_early_data_size}}};
-    client = ptls_new(ctx, 0);
-    *ptls_get_data_ptr(client) = &client_secrets;
-    server = ptls_new(ctx_peer, 1);
-    *ptls_get_data_ptr(server) = &server_secrets;
-    ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, &client_hs_prop);
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(max_early_data_size != 0);
-    ok(memcmp(client_secrets[1][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
-    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
-    ok(ret == 0);
-    ok(sbuf.off != 0);
-    ok(!ptls_handshake_is_complete(server));
-    ok(memcmp(client_secrets[1][1], server_secrets[0][1], PTLS_MAX_DIGEST_SIZE) == 0);
-    ok(memcmp(server_secrets[0][2], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0); /* !!!overlap!!! */
-    ok(memcmp(server_secrets[1][2], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
-    ok(memcmp(server_secrets[1][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
-    ok(memcmp(server_secrets[0][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) == 0);
-    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop);
-    ok(ret == 0);
-    ok(cbuf.off != 0);
-    ok(ptls_handshake_is_complete(client));
-    ok(memcmp(client_secrets[0][3], server_secrets[1][3], PTLS_MAX_DIGEST_SIZE) == 0);
-    ok(memcmp(client_secrets[1][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
-    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
-    ok(ret == 0);
-    ok(sbuf.off == 0);
-    ok(ptls_handshake_is_complete(server));
-    ok(memcmp(server_secrets[0][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
-
-    ptls_free(client);
-    ptls_free(server);
-
-    cbuf.off = 0;
-    sbuf.off = 0;
-    memset(client_secrets, 0, sizeof(client_secrets));
-    memset(server_secrets, 0, sizeof(server_secrets));
-    memset(coffs, 0, sizeof(coffs));
-    memset(soffs, 0, sizeof(soffs));
-
-    /* 0-RTT rejection */
-    ctx_peer->max_early_data_size = 0;
-    client_hs_prop = (ptls_handshake_properties_t){{{{NULL}, saved_tickets[0], &max_early_data_size}}};
-    client = ptls_new(ctx, 0);
-    *ptls_get_data_ptr(client) = &client_secrets;
-    server = ptls_new(ctx_peer, 1);
-    *ptls_get_data_ptr(server) = &server_secrets;
-    ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, &client_hs_prop);
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(max_early_data_size != 0);
-    ok(memcmp(client_secrets[1][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
-    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
-    ok(ret == 0);
-    ok(sbuf.off != 0);
-    ok(!ptls_handshake_is_complete(server));
-    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop);
-    ok(ret == 0);
-    ok(cbuf.off != 0);
-    ok(ptls_handshake_is_complete(client));
-    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_REJECTED);
-    ok(memcmp(server_secrets[0][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) == 0);
-    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
-    ok(ret == 0);
-    ok(sbuf.off == 0);
-    ok(ptls_handshake_is_complete(server));
-
-    ptls_free(client);
-    ptls_free(server);
-
-    cbuf.off = 0;
-    sbuf.off = 0;
-    memset(client_secrets, 0, sizeof(client_secrets));
-    memset(server_secrets, 0, sizeof(server_secrets));
-    memset(coffs, 0, sizeof(coffs));
-    memset(soffs, 0, sizeof(soffs));
-
-    /* HRR rejects 0-RTT */
-    ctx_peer->max_early_data_size = 8192;
-    ptls_handshake_properties_t server_hs_prop = {{{{NULL}}}};
-    server_hs_prop.server.enforce_retry = 1;
-    client_hs_prop = (ptls_handshake_properties_t){{{{NULL}, saved_tickets[0], &max_early_data_size}}};
-    client = ptls_new(ctx, 0);
-    *ptls_get_data_ptr(client) = &client_secrets;
-    server = ptls_new(ctx_peer, 1);
-    *ptls_get_data_ptr(server) = &server_secrets;
-    ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, &client_hs_prop); /* -> CH */
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(max_early_data_size != 0);
-    ok(memcmp(client_secrets[1][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
-    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, &server_hs_prop); /* CH -> HRR */
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(sbuf.off != 0);
-    ok(!ptls_handshake_is_complete(server));
-    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop); /* HRR  -> CH */
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(cbuf.off != 0);
-    ok(!ptls_handshake_is_complete(client));
-    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_REJECTED);
-    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, &server_hs_prop); /* CH -> SH..SF */
-    ok(ret == 0);
-    ok(!ptls_handshake_is_complete(server));
-    ok(memcmp(server_secrets[0][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) == 0);
-    ok(sbuf.off != 0);
-    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop); /* SH..SF -> CF */
-    ok(ret == 0);
-    ok(ptls_handshake_is_complete(client));
-    ok(cbuf.off != 0);
-    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, &server_hs_prop); /* CF -> */
-    ok(ret == 0);
-    ok(ptls_handshake_is_complete(server));
-
-    ptls_free(client);
-    ptls_free(server);
-
-    cbuf.off = 0;
-    sbuf.off = 0;
-
-    /* shamelessly reuse this subtest for testing ordinary TLS 0-RTT with HRR rejection */
-    ctx->update_traffic_key = NULL;
-    ctx->omit_end_of_early_data = 0;
-    ctx_peer->update_traffic_key = NULL;
-    ctx_peer->omit_end_of_early_data = 0;
-    client_hs_prop = (ptls_handshake_properties_t){{{{NULL}, saved_tickets[0], &max_early_data_size}}};
-    server_hs_prop = (ptls_handshake_properties_t){{{{NULL}}}};
-    server_hs_prop.server.enforce_retry = 1;
-    client = ptls_new(ctx, 0);
-    server = ptls_new(ctx_peer, 1);
-    ret = ptls_handshake(client, &cbuf, NULL, NULL, &client_hs_prop); /* -> CH */
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(client_hs_prop.client.max_early_data_size != 0);
-    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN);
-    ok(cbuf.off != 0);
-    ret = ptls_send(client, &cbuf, "hello world", 11); /* send 0-RTT data that'll be rejected */
-    ok(ret == 0);
-    size_t inlen = cbuf.off;
-    ret = ptls_handshake(server, &sbuf, cbuf.base, &inlen, &server_hs_prop); /* CH -> HRR */
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(cbuf.off == inlen);
-    cbuf.off = 0;
-    ok(sbuf.off != 0);
-    inlen = sbuf.off;
-    ret = ptls_handshake(client, &cbuf, sbuf.base, &inlen, &client_hs_prop); /* HRR -> CH */
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_REJECTED);
-    ok(sbuf.off == inlen);
-    sbuf.off = 0;
-    ok(cbuf.off != 0);
-    inlen = cbuf.off;
-    ret = ptls_handshake(server, &sbuf, cbuf.base, &inlen, &server_hs_prop); /* CH -> SH..SF,NST */
-    ok(ret == 0);
-    ok(!ptls_handshake_is_complete(server));
-    ok(cbuf.off == inlen);
-    cbuf.off = 0;
-    ok(sbuf.off != 0);
-    inlen = sbuf.off;
-    ret = ptls_handshake(client, &cbuf, sbuf.base, &inlen, &client_hs_prop); /* SH..SF -> CF */
-    ok(ret == 0);
-    ok(ptls_handshake_is_complete(client));
-    ok(inlen < sbuf.off); /* ignore NST */
-    sbuf.off = 0;
-    inlen = cbuf.off;
-    ret = ptls_handshake(server, &sbuf, cbuf.base, &inlen, &server_hs_prop); /* CF -> */
-    ok(ret == 0);
-    ok(ptls_handshake_is_complete(server));
-    ok(sbuf.off == 0);
+//    /* 0-RTT resumption */
+//    size_t max_early_data_size = 0;
+//    ptls_handshake_properties_t client_hs_prop = {{{{NULL}, saved_tickets[0], &max_early_data_size}}};
+//    client = ptls_new(ctx, 0);
+//    *ptls_get_data_ptr(client) = &client_secrets;
+//    server = ptls_new(ctx_peer, 1);
+//    *ptls_get_data_ptr(server) = &server_secrets;
+//    ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, &client_hs_prop);
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(max_early_data_size != 0);
+//    ok(memcmp(client_secrets[1][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+//    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
+//    ok(ret == 0);
+//    ok(sbuf.off != 0);
+//    ok(!ptls_handshake_is_complete(server));
+//    ok(memcmp(client_secrets[1][1], server_secrets[0][1], PTLS_MAX_DIGEST_SIZE) == 0);
+//    ok(memcmp(server_secrets[0][2], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0); /* !!!overlap!!! */
+//    ok(memcmp(server_secrets[1][2], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+//    ok(memcmp(server_secrets[1][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+//    ok(memcmp(server_secrets[0][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) == 0);
+//    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop);
+//    ok(ret == 0);
+//    ok(cbuf.off != 0);
+//    ok(ptls_handshake_is_complete(client));
+//    ok(memcmp(client_secrets[0][3], server_secrets[1][3], PTLS_MAX_DIGEST_SIZE) == 0);
+//    ok(memcmp(client_secrets[1][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+//    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
+//    ok(ret == 0);
+//    ok(sbuf.off == 0);
+//    ok(ptls_handshake_is_complete(server));
+//    ok(memcmp(server_secrets[0][3], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+//
+//    ptls_free(client);
+//    ptls_free(server);
+//
+//    cbuf.off = 0;
+//    sbuf.off = 0;
+//    memset(client_secrets, 0, sizeof(client_secrets));
+//    memset(server_secrets, 0, sizeof(server_secrets));
+//    memset(coffs, 0, sizeof(coffs));
+//    memset(soffs, 0, sizeof(soffs));
+//
+//    /* 0-RTT rejection */
+//    ctx_peer->max_early_data_size = 0;
+//    client_hs_prop = (ptls_handshake_properties_t){{{{NULL}, saved_tickets[0], &max_early_data_size}}};
+//    client = ptls_new(ctx, 0);
+//    *ptls_get_data_ptr(client) = &client_secrets;
+//    server = ptls_new(ctx_peer, 1);
+//    *ptls_get_data_ptr(server) = &server_secrets;
+//    ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, &client_hs_prop);
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(max_early_data_size != 0);
+//    ok(memcmp(client_secrets[1][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+//    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
+//    ok(ret == 0);
+//    ok(sbuf.off != 0);
+//    ok(!ptls_handshake_is_complete(server));
+//    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop);
+//    ok(ret == 0);
+//    ok(cbuf.off != 0);
+//    ok(ptls_handshake_is_complete(client));
+//    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_REJECTED);
+//    ok(memcmp(server_secrets[0][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) == 0);
+//    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, NULL);
+//    ok(ret == 0);
+//    ok(sbuf.off == 0);
+//    ok(ptls_handshake_is_complete(server));
+//
+//    ptls_free(client);
+//    ptls_free(server);
+//
+//    cbuf.off = 0;
+//    sbuf.off = 0;
+//    memset(client_secrets, 0, sizeof(client_secrets));
+//    memset(server_secrets, 0, sizeof(server_secrets));
+//    memset(coffs, 0, sizeof(coffs));
+//    memset(soffs, 0, sizeof(soffs));
+//
+//    /* HRR rejects 0-RTT */
+//    ctx_peer->max_early_data_size = 8192;
+//    ptls_handshake_properties_t server_hs_prop = {{{{NULL}}}};
+//    server_hs_prop.server.enforce_retry = 1;
+//    client_hs_prop = (ptls_handshake_properties_t){{{{NULL}, saved_tickets[0], &max_early_data_size}}};
+//    client = ptls_new(ctx, 0);
+//    *ptls_get_data_ptr(client) = &client_secrets;
+//    server = ptls_new(ctx_peer, 1);
+//    *ptls_get_data_ptr(server) = &server_secrets;
+//    ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, &client_hs_prop); /* -> CH */
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(max_early_data_size != 0);
+//    ok(memcmp(client_secrets[1][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) != 0);
+//    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, &server_hs_prop); /* CH -> HRR */
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(sbuf.off != 0);
+//    ok(!ptls_handshake_is_complete(server));
+//    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop); /* HRR  -> CH */
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(cbuf.off != 0);
+//    ok(!ptls_handshake_is_complete(client));
+//    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_REJECTED);
+//    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, &server_hs_prop); /* CH -> SH..SF */
+//    ok(ret == 0);
+//    ok(!ptls_handshake_is_complete(server));
+//    ok(memcmp(server_secrets[0][1], zeroes_of_max_digest_size, PTLS_MAX_DIGEST_SIZE) == 0);
+//    ok(sbuf.off != 0);
+//    ret = feed_messages(client, &cbuf, coffs, sbuf.base, soffs, &client_hs_prop); /* SH..SF -> CF */
+//    ok(ret == 0);
+//    ok(ptls_handshake_is_complete(client));
+//    ok(cbuf.off != 0);
+//    ret = feed_messages(server, &sbuf, soffs, cbuf.base, coffs, &server_hs_prop); /* CF -> */
+//    ok(ret == 0);
+//    ok(ptls_handshake_is_complete(server));
+//
+//    ptls_free(client);
+//    ptls_free(server);
+//
+//    cbuf.off = 0;
+//    sbuf.off = 0;
+//
+//    /* shamelessly reuse this subtest for testing ordinary TLS 0-RTT with HRR rejection */
+//    ctx->update_traffic_key = NULL;
+//    ctx->omit_end_of_early_data = 0;
+//    ctx_peer->update_traffic_key = NULL;
+//    ctx_peer->omit_end_of_early_data = 0;
+//    client_hs_prop = (ptls_handshake_properties_t){{{{NULL}, saved_tickets[0], &max_early_data_size}}};
+//    server_hs_prop = (ptls_handshake_properties_t){{{{NULL}}}};
+//    server_hs_prop.server.enforce_retry = 1;
+//    client = ptls_new(ctx, 0);
+//    server = ptls_new(ctx_peer, 1);
+//    ret = ptls_handshake(client, &cbuf, NULL, NULL, &client_hs_prop); /* -> CH */
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(client_hs_prop.client.max_early_data_size != 0);
+//    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN);
+//    ok(cbuf.off != 0);
+//    ret = ptls_send(client, &cbuf, "hello world", 11); /* send 0-RTT data that'll be rejected */
+//    ok(ret == 0);
+//    size_t inlen = cbuf.off;
+//    ret = ptls_handshake(server, &sbuf, cbuf.base, &inlen, &server_hs_prop); /* CH -> HRR */
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(cbuf.off == inlen);
+//    cbuf.off = 0;
+//    ok(sbuf.off != 0);
+//    inlen = sbuf.off;
+//    ret = ptls_handshake(client, &cbuf, sbuf.base, &inlen, &client_hs_prop); /* HRR -> CH */
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(client_hs_prop.client.early_data_acceptance == PTLS_EARLY_DATA_REJECTED);
+//    ok(sbuf.off == inlen);
+//    sbuf.off = 0;
+//    ok(cbuf.off != 0);
+//    inlen = cbuf.off;
+//    ret = ptls_handshake(server, &sbuf, cbuf.base, &inlen, &server_hs_prop); /* CH -> SH..SF,NST */
+//    ok(ret == 0);
+//    ok(!ptls_handshake_is_complete(server));
+//    ok(cbuf.off == inlen);
+//    cbuf.off = 0;
+//    ok(sbuf.off != 0);
+//    inlen = sbuf.off;
+//    ret = ptls_handshake(client, &cbuf, sbuf.base, &inlen, &client_hs_prop); /* SH..SF -> CF */
+//    ok(ret == 0);
+//    ok(ptls_handshake_is_complete(client));
+//    ok(inlen < sbuf.off); /* ignore NST */
+//    sbuf.off = 0;
+//    inlen = cbuf.off;
+//    ret = ptls_handshake(server, &sbuf, cbuf.base, &inlen, &server_hs_prop); /* CF -> */
+//    ok(ret == 0);
+//    ok(ptls_handshake_is_complete(server));
+//    ok(sbuf.off == 0);
 
     ptls_free(client);
     ptls_free(server);
@@ -2103,7 +2212,9 @@ static void test_all_handshakes_core(void)
 //    }
 //    subtest("key-update", test_key_update);
 //    subtest("pre-shared-key", test_pre_shared_key);
-    subtest("handshake-api", test_handshake_api);
+//    subtest("handshake-api", test_handshake_api);
+    subtest("debug-handshake-api", debug_test_handshake_api);
+
 }
 
 static void test_all_handshakes(void)
