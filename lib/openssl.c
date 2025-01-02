@@ -1603,7 +1603,7 @@ static int sign_certificate(ptls_sign_certificate_t *_self, ptls_t *tls, ptls_as
     if ((scheme = ptls_openssl_select_signature_scheme(self->schemes, algorithms, num_algorithms)) == NULL)
         return PTLS_ALERT_HANDSHAKE_FAILURE;
     *selected_algorithm = scheme->scheme_id;
-    printf("[%s]: selected_sign_scheme 0x%04x, %d", __func__, schemes[i].scheme_id, __LINE__);
+    printf("[%s]: selected_sign_scheme_id 0x%04x, %d", __func__, scheme->scheme_id, __LINE__);
 
 #if PTLS_OPENSSL_HAVE_ASYNC
     if (!self->async && async != NULL) {
