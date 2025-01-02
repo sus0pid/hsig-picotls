@@ -483,7 +483,7 @@ int main(int argc, char **argv)
     struct sockaddr_storage sa;
     socklen_t salen;
     int family = 0;
-    const char *raw_pub_key_file = NULL, *cert_location = NULL;
+    const char *raw_pub_key_file = NULL, *cert_location = NULL, *pkey_location = NULL;
 
     while ((ch = getopt(argc, argv, "46abBC:c:i:Ij:ok:nN:es:Sr:p:P:E:K:l:T:uy:vV:h")) != -1) {
         switch (ch) {
@@ -528,10 +528,11 @@ int main(int argc, char **argv)
         case 'o':
             /* require oqs signature algo on auth @xinshu */
             ctx.require_oqssig_on_auth = 1;
+            printf("[%s]: require oqssig is set to 1, %d\n", __func__, __LINE__);
             break;
         case 'k':
             // test default oqs signature algo @xinshu
-            load_private_key(&ctx, optarg, default_oqssig_name);
+            pkey_location = optarg;
             break;
         case 'n':
             hsprop.client.negotiate_before_key_exchange = 1;
@@ -665,6 +666,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "-C/-c and -k options must be used together\n");
         return 1;
     }
+
+    /* load private key after ctx.require_oqssig_on_auth is set @xinshu */
+    if (!pkay_location)
+        load_private_key(&ctx, optarg, default_oqssig_name);
+
 
     if (is_server) {
 #if PICOTLS_USE_BROTLI
