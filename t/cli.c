@@ -668,8 +668,8 @@ int main(int argc, char **argv)
     }
 
     /* load private key after ctx.require_oqssig_on_auth is set @xinshu */
-    if (!pkay_location)
-        load_private_key(&ctx, optarg, default_oqssig_name);
+    if (!pkey_location)
+        load_private_key(&ctx, pkey_location, default_oqssig_name);
 
 
     if (is_server) {
