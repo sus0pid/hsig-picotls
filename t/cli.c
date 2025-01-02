@@ -56,6 +56,7 @@
 
 /* sentinels indicating that the endpoint is in benchmark mode */
 static const char input_file_is_benchmark[] = "is:benchmark";
+static const char *default_oqssig_name = "dilithium3";
 
 static void shift_buffer(ptls_buffer_t *buf, size_t delta)
 {
@@ -370,7 +371,7 @@ static void usage(const char *cmd)
            "  -i file              a file to read from and send to the peer (default: stdin)\n"
            "  -I                   keep send side open after sending all data (client-only)\n"
            "  -j log-file          file to log probe events in JSON-Lines\n"
-           "  -o                   enable oqs signature algorithms (dilithium2 for now)\n"
+           "  -o                   enable oqs signature algorithms (default oqssig scheme: dilithium3)\n"
            "  -k key-file          specifies the credentials for signing the certificate\n"
            "  -K key-file          ECH private key for each ECH config provided by -E\n"
            "  -l log-file          file to log events (incl. traffic secrets)\n"
@@ -461,7 +462,7 @@ int main(int argc, char **argv)
     };
     ptls_handshake_properties_t hsprop = {{{{NULL}}}};
     const char *host, *port, *input_file = NULL, *psk_hash = "sha256";
-    int is_server = 0, use_early_data = 0, request_key_update = 0, keep_sender_open = 0, is_oqs = 0, ch;
+    int is_server = 0, use_early_data = 0, request_key_update = 0, keep_sender_open = 0, ch;
     struct sockaddr_storage sa;
     socklen_t salen;
     int family = 0;
@@ -508,15 +509,13 @@ int main(int argc, char **argv)
             setup_ptlslog(optarg);
             break;
         case 'o':
-            is_oqs = 1;
-            // load oqs provider
+            /* require oqs signature algo on auth @xinshu */
+            ctx.require_oqssig_on_auth = 1;
 
             break;
         case 'k':
-            // test oqs sig algo: dilithium2, default oqs signature algo @xinshu
-            const char *sig_name = "dilithium2";
-            ctx.require_oqssig_on_auth = 1;
-            load_private_key(&ctx, optarg, sig_name);
+            // test default oqs signature algo @xinshu
+            load_private_key(&ctx, optarg, default_oqssig_name);
             break;
         case 'n':
             hsprop.client.negotiate_before_key_exchange = 1;
