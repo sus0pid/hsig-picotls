@@ -3193,14 +3193,16 @@ Exit:
     return ret;
 }
 
-/* server set is_oqs_sig based on ch->use_oqssig_on_auth
+/* server set is_oqs_sig based on tls->is_oqssig_on_auth
  * client set is_oqs_sig based on ctx->require_oqssig_on_auth @xinshu*/
 static int send_certificate_verify(ptls_t *tls, ptls_message_emitter_t *emitter,
                                    struct st_ptls_signature_algorithms_t *signature_algorithms,
-                                   const char *context_string, int is_oqs_sig)
+                                   const char *context_string)
 {
     size_t start_off = emitter->buf->off;
     int ret;
+    /* set is_oqs_sig */
+    int is_oqs_sig = (ptls_is_server(tls)) ? tls->is_oqssig_on_auth : tls->ctx->require_oqssig_on_auth;
 
     if (tls->ctx->sign_certificate == NULL)
         return 0;
@@ -3500,8 +3502,7 @@ static int client_handle_finished(ptls_t *tls, ptls_message_emitter_t *emitter, 
         if ((ret = send_certificate(tls, emitter, &tls->client.certificate_request.signature_algorithms,
                                     tls->client.certificate_request.context, 0, NULL, 0)) == 0)
             ret = send_certificate_verify(tls, emitter, &tls->client.certificate_request.signature_algorithms,
-                                          PTLS_CLIENT_CERTIFICATE_VERIFY_CONTEXT_STRING,
-                                          tls->ctx->require_oqssig_on_auth); /* set is_oqs_sig @xinshu */
+                                          PTLS_CLIENT_CERTIFICATE_VERIFY_CONTEXT_STRING); /* set is_oqs_sig @xinshu */
         free(tls->client.certificate_request.context.base);
         tls->client.certificate_request.context = ptls_iovec_init(NULL, 0);
         if (ret != 0)
@@ -4919,11 +4920,11 @@ static int server_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
             goto Exit;
         /* send certificateverify, finished, and complete the handshake */
         /* when sending certverify, server call do_sign or do_oqs_sign depends on ch->use_oqssig_on_auth */
-        if ((ret = server_finish_handshake(tls, emitter, 1, &ch->signature_algorithms, ch->use_oqssig_on_auth)) != 0)
+        if ((ret = server_finish_handshake(tls, emitter, 1, &ch->signature_algorithms)) != 0)
             goto Exit;
     } else {
         /* send finished, and complete the handshake */
-        if ((ret = server_finish_handshake(tls, emitter, 0, NULL, ch->use_oqssig_on_auth)) != 0)
+        if ((ret = server_finish_handshake(tls, emitter, 0, NULL)) != 0)
             goto Exit;
     }
 
@@ -4944,14 +4945,12 @@ Exit:
 }
 
 static int server_finish_handshake(ptls_t *tls, ptls_message_emitter_t *emitter, int send_cert_verify,
-                                   struct st_ptls_signature_algorithms_t *signature_algorithms,
-                                   int is_oqs_sig)
+                                   struct st_ptls_signature_algorithms_t *signature_algorithms)
 {
     int ret;
 
     if (send_cert_verify) {
-        if ((ret = send_certificate_verify(tls, emitter, signature_algorithms, PTLS_SERVER_CERTIFICATE_VERIFY_CONTEXT_STRING,
-                                           is_oqs_sig)) !=
+        if ((ret = send_certificate_verify(tls, emitter, signature_algorithms, PTLS_SERVER_CERTIFICATE_VERIFY_CONTEXT_STRING)) !=
             0) {
             if (ret == PTLS_ERROR_ASYNC_OPERATION) {
                 tls->state = PTLS_STATE_SERVER_GENERATING_CERTIFICATE_VERIFY;
