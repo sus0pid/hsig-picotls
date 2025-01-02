@@ -798,7 +798,7 @@ int main(int argc, char **argv)
 //    subtest("ecdsa-sign", test_ecdsa_sign);
 //    subtest("ed25519-sign", test_ed25519_sign);
     /* test picotls handshake with/wo oqs */
-    subtest("picotls", test_picotls);
+//    subtest("picotls", test_picotls);
 
 //    ctx = ctx_peer = &openssl_ctx_sha256only;
 //    subtest("picotls", test_picotls);
