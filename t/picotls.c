@@ -1223,7 +1223,7 @@ static int async_sign_certificate(ptls_sign_certificate_t *self, ptls_t *tls, pt
             /* first invocation, make a fake call to the backend and obtain the algorithm, return it, but not the signature */
             ptls_buffer_t fakebuf;
             ptls_buffer_init(&fakebuf, "", 0);
-            int ret = sign_certificate(self, tls, NULL, selected_algorithm, &fakebuf, input, algorithms, num_algorithms);
+            int ret = sign_certificate(self, tls, NULL, selected_algorithm, &fakebuf, input, algorithms, num_algorithms, is_oqs_sig);
             assert(ret == 0);
             ptls_buffer_dispose(&fakebuf);
             async_ctx.super.destroy_ = (void (*)(ptls_async_job_t *))0xdeadbeef;
