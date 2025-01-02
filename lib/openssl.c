@@ -182,6 +182,7 @@ const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_oqs_signature_schemes
     else
         fprintf(stderr, "Unknown oqs siganture scheme: %s\n", sig_name);
 
+    printf("[%s]: signame: %s is found, %d\n", __func__, sig_name, __LINE__);
     return schemes;
 }
 
@@ -1741,6 +1742,8 @@ Exit:
 /* initiate oqs signature algo for signing operation */
 int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key, const char *sig_name)
 {
+    printf("[%s]: initiate oqs sign certificate, signame: %s, %d\n", __func__, sig_name, __LINE__);
+
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
     if ((self->schemes = ptls_openssl_lookup_oqs_signature_schemes(sig_name)) == NULL)
@@ -1755,6 +1758,8 @@ int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self
 /* initiate traditional signature algo for signing operation*/
 int ptls_openssl_init_trad_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key)
 {
+    printf("[%s]: initiate traditional sign certificate, %d\n", __func__, __LINE__);
+
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
     if ((self->schemes = ptls_openssl_lookup_signature_schemes(key)) == NULL)
