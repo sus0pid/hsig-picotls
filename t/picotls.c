@@ -1201,16 +1201,17 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
 static ptls_sign_certificate_t *sc_orig;
 
 static int sign_certificate(ptls_sign_certificate_t *self, ptls_t *tls, ptls_async_job_t **async, uint16_t *selected_algorithm,
-                            ptls_buffer_t *output, ptls_iovec_t input, const uint16_t *algorithms, size_t num_algorithms)
+                            ptls_buffer_t *output, ptls_iovec_t input, const uint16_t *algorithms, size_t num_algorithms,
+                            int is_oqs_sig)
 {
     ++*(ptls_is_server(tls) ? &server_sc_callcnt : &client_sc_callcnt);
-    printf("[%s]: sign_certificate called with selected_algorithm=%d\n", __func__ , __LINE__, *selected_algorithm);
-    return sc_orig->cb(sc_orig, tls, async, selected_algorithm, output, input, algorithms, num_algorithms);
+    printf("[%s]: selected algorithm = 0x%04x, %d\n", __func__ , *selected_algorithm, __LINE__);
+    return sc_orig->cb(sc_orig, tls, async, selected_algorithm, output, input, algorithms, num_algorithms, is_oqs_sig);
 }
 
 static int async_sign_certificate(ptls_sign_certificate_t *self, ptls_t *tls, ptls_async_job_t **async,
                                   uint16_t *selected_algorithm, ptls_buffer_t *output, ptls_iovec_t input,
-                                  const uint16_t *algorithms, size_t num_algorithms)
+                                  const uint16_t *algorithms, size_t num_algorithms, int is_oqs_sig)
 {
     static struct {
         ptls_async_job_t super;
@@ -1241,17 +1242,17 @@ static int async_sign_certificate(ptls_sign_certificate_t *self, ptls_t *tls, pt
         }
     }
 
-    return sign_certificate(self, tls, NULL, selected_algorithm, output, input, algorithms, num_algorithms);
+    return sign_certificate(self, tls, NULL, selected_algorithm, output, input, algorithms, num_algorithms, is_oqs_sig);
 }
 
 static ptls_sign_certificate_t *second_sc_orig;
 
 static int second_sign_certificate(ptls_sign_certificate_t *self, ptls_t *tls, ptls_async_job_t **async,
                                    uint16_t *selected_algorithm, ptls_buffer_t *output, ptls_iovec_t input,
-                                   const uint16_t *algorithms, size_t num_algorithms)
+                                   const uint16_t *algorithms, size_t num_algorithms, int is_oqs_sig)
 {
     ++*(ptls_is_server(tls) ? &server_sc_callcnt : &client_sc_callcnt);
-    return second_sc_orig->cb(second_sc_orig, tls, async, selected_algorithm, output, input, algorithms, num_algorithms);
+    return second_sc_orig->cb(second_sc_orig, tls, async, selected_algorithm, output, input, algorithms, num_algorithms, is_oqs_sig);
 }
 
 static void test_full_handshake_impl(int require_client_authentication, int is_async, int transfer_session)
