@@ -776,7 +776,8 @@ typedef struct st_ptls_async_job_t {
  * supports asynchronous mode; see `ptls_openssl_sign_certificate_t` for more information.
  */
 PTLS_CALLBACK_TYPE(int, sign_certificate, ptls_t *tls, ptls_async_job_t **async, uint16_t *selected_algorithm,
-                   ptls_buffer_t *output, ptls_iovec_t input, const uint16_t *algorithms, size_t num_algorithms);
+                   ptls_buffer_t *output, ptls_iovec_t input, const uint16_t *algorithms, size_t num_algorithms,
+                   int is_oqs_sig);
 /**
  * after receiving Certificate, the core calls the callback to verify the certificate chain and to obtain a pointer to a
  * callback that should be used for verifying CertificateVerify. If an error occurs between a successful return from this
@@ -789,7 +790,7 @@ PTLS_CALLBACK_TYPE(int, sign_certificate, ptls_t *tls, ptls_async_job_t **async,
 typedef struct st_ptls_verify_certificate_t {
     int (*cb)(struct st_ptls_verify_certificate_t *self, ptls_t *tls, const char *server_name,
               int (**verify_sign)(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t sign), void **verify_data,
-              ptls_iovec_t *certs, size_t num_certs);
+              ptls_iovec_t *certs, size_t num_certs, int is_oqs_sig);
     /**
      * list of signature algorithms being supported, terminated by UINT16_MAX
      */
@@ -875,6 +876,10 @@ struct st_ptls_context_t {
         ptls_iovec_t *list;
         size_t count;
     } certificates;
+    /* require oqs cert & certverify on both sides,
+     * tell sign_certificate() callback function when signing handshake transcript & verify certverify from server
+     * tell server to receive oqs cert&certverify @xinshu*/
+    unsigned require_oqssig_on_auth : 1;
     /**
      * External pre-shared key used for mutual authentication. Unless when using PSK, all the fields must be set to NULL / 0.
      */

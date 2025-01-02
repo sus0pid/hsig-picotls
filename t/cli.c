@@ -513,9 +513,10 @@ int main(int argc, char **argv)
 
             break;
         case 'k':
-            // test oqs sig algo: dilithium2
+            // test oqs sig algo: dilithium2, default oqs signature algo @xinshu
             const char *sig_name = "dilithium2";
-            load_private_key(&ctx, optarg, is_oqs, sig_name);
+            ctx.require_oqssig_on_auth = 1;
+            load_private_key(&ctx, optarg, sig_name);
             break;
         case 'n':
             hsprop.client.negotiate_before_key_exchange = 1;

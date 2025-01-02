@@ -70,6 +70,7 @@
 #define PTLS_EXTENSION_TYPE_CERTIFICATE_AUTHORITIES 47
 #define PTLS_EXTENSION_TYPE_KEY_SHARE 51
 #define PTLS_EXTENSION_TYPE_TICKET_REQUEST 58
+#define PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH 60
 #define PTLS_EXTENSION_TYPE_ECH_OUTER_EXTENSIONS 0xfd00
 #define PTLS_EXTENSION_TYPE_ENCRYPTED_CLIENT_HELLO 0xfe0d
 
@@ -277,6 +278,7 @@ struct st_ptls_t {
     unsigned needs_key_update : 1;
     unsigned key_update_send_request : 1;
     unsigned skip_tracing : 1;
+    unsigned is_oqssig_on_auth : 1; /* is oqssig on auth required @xinshu*/
     /**
      * misc.
      */
@@ -338,6 +340,8 @@ struct st_ptls_client_hello_t {
     ptls_iovec_t cipher_suites;
     ptls_iovec_t negotiated_groups;
     ptls_iovec_t key_shares;
+    /* client send oqs signature requirement via extension @xinshu */
+    unsigned use_oqssig_on_auth: 1;
     struct st_ptls_signature_algorithms_t signature_algorithms;
     ptls_iovec_t server_name;
     struct {
@@ -2243,11 +2247,16 @@ static int encode_client_hello(ptls_context_t *ctx, ptls_buffer_t *sendbuf, enum
                         ptls_buffer_push16(sendbuf, supported_versions[i]);
                 });
             });
-            /* xs: added oqs sig algos to supported signature algorithms in client hello */
+            /* add oqs signature algos to supported signature algorithms in client hello @xinshu*/
             buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_SIGNATURE_ALGORITHMS, {
                 if ((ret = push_signature_algorithms(ctx->verify_certificate, sendbuf)) != 0)
                     goto Exit;
             });
+            /* push require oqs signature scheme in cert&&certverify @xinshu*/
+            if (ctx->require_oqssig_on_auth) {
+                printf("[%s]: push require_oqssig in extension, %d\n", __func__, __LINE__);
+                buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH, {});
+            }
             if (ctx->key_exchanges != NULL) {
                 buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_SUPPORTED_GROUPS, {
                     ptls_key_exchange_algorithm_t **algo = ctx->key_exchanges;
@@ -3135,6 +3144,7 @@ Exit:
     return ret;
 }
 
+/* default send certificate callback function */
 static int default_emit_certificate_cb(ptls_emit_certificate_t *_self, ptls_t *tls, ptls_message_emitter_t *emitter,
                                        ptls_key_schedule_t *key_sched, ptls_iovec_t context, int push_status_request,
                                        const uint16_t *compress_algos, size_t num_compress_algos)
@@ -3183,8 +3193,11 @@ Exit:
     return ret;
 }
 
+/* server set is_oqs_sig based on ch->use_oqssig_on_auth
+ * client set is_oqs_sig based on ctx->require_oqssig_on_auth @xinshu*/
 static int send_certificate_verify(ptls_t *tls, ptls_message_emitter_t *emitter,
-                                   struct st_ptls_signature_algorithms_t *signature_algorithms, const char *context_string)
+                                   struct st_ptls_signature_algorithms_t *signature_algorithms,
+                                   const char *context_string, int is_oqs_sig)
 {
     size_t start_off = emitter->buf->off;
     int ret;
@@ -3203,7 +3216,7 @@ static int send_certificate_verify(ptls_t *tls, ptls_message_emitter_t *emitter,
             if ((ret = tls->ctx->sign_certificate->cb(
                      tls->ctx->sign_certificate, tls, tls->is_server ? &tls->server.async_job : NULL, &algo, sendbuf,
                      ptls_iovec_init(data, datalen), signature_algorithms != NULL ? signature_algorithms->list : NULL,
-                     signature_algorithms != NULL ? signature_algorithms->count : 0)) != 0) {
+                     signature_algorithms != NULL ? signature_algorithms->count : 0, is_oqs_sig)) != 0) {
                 if (ret == PTLS_ERROR_ASYNC_OPERATION) {
                     assert(tls->is_server || !"async operation only supported on the server-side");
                     assert(tls->server.async_job != NULL);
@@ -3246,6 +3259,7 @@ static int client_handle_certificate_request(ptls_t *tls, ptls_iovec_t message, 
 
 static int handle_certificate(ptls_t *tls, const uint8_t *src, const uint8_t *end, int *got_certs)
 {
+    printf("[%s]: handling certificate, %d\n", __func__, __LINE__);
     ptls_iovec_t certs[16];
     size_t num_certs = 0;
     int ret = 0;
@@ -3285,8 +3299,10 @@ static int handle_certificate(ptls_t *tls, const uint8_t *src, const uint8_t *en
                 server_name = tls->server_name;
             }
         }
+        /* add an argument is_oqs_sig to ctx->verify_certificate callback function @xinshu */
+        int is_oqs_sig = (ptls_is_server(tls)) ? tls->is_oqssig_on_auth : tls->ctx->require_oqssig_on_auth;
         if ((ret = tls->ctx->verify_certificate->cb(tls->ctx->verify_certificate, tls, server_name, &tls->certificate_verify.cb,
-                                                    &tls->certificate_verify.verify_ctx, certs, num_certs)) != 0)
+                                                    &tls->certificate_verify.verify_ctx, certs, num_certs, is_oqs_sig)) != 0)
             goto Exit;
     }
 
@@ -3405,6 +3421,7 @@ static int handle_certificate_verify(ptls_t *tls, ptls_iovec_t message, const ch
     });
 
     signdata_size = build_certificate_verify_signdata(signdata, tls->key_schedule, context_string);
+    /* verify_sign() or verify_oqs_sign() in lib/openssl.c @xinshu */
     if (tls->certificate_verify.cb != NULL) {
         ret = tls->certificate_verify.cb(tls->certificate_verify.verify_ctx, algo, ptls_iovec_init(signdata, signdata_size),
                                          signature);
@@ -3483,7 +3500,8 @@ static int client_handle_finished(ptls_t *tls, ptls_message_emitter_t *emitter, 
         if ((ret = send_certificate(tls, emitter, &tls->client.certificate_request.signature_algorithms,
                                     tls->client.certificate_request.context, 0, NULL, 0)) == 0)
             ret = send_certificate_verify(tls, emitter, &tls->client.certificate_request.signature_algorithms,
-                                          PTLS_CLIENT_CERTIFICATE_VERIFY_CONTEXT_STRING);
+                                          PTLS_CLIENT_CERTIFICATE_VERIFY_CONTEXT_STRING,
+                                          tls->ctx->require_oqssig_on_auth); /* set is_oqs_sig @xinshu */
         free(tls->client.certificate_request.context.base);
         tls->client.certificate_request.context = ptls_iovec_init(NULL, 0);
         if (ret != 0)
@@ -3605,6 +3623,7 @@ Exit:
     return ret;
 }
 
+/* edited: decode require_oqs_signature extension @xinshu */
 static int decode_client_hello(ptls_context_t *ctx, struct st_ptls_client_hello_t *ch, const uint8_t *src, const uint8_t *const end,
                                ptls_handshake_properties_t *properties, ptls_t *tls_cbarg)
 {
@@ -3732,8 +3751,15 @@ static int decode_client_hello(ptls_context_t *ctx, struct st_ptls_client_hello_
             ch->negotiated_groups = ptls_iovec_init(src, end - src);
             break;
         case PTLS_EXTENSION_TYPE_SIGNATURE_ALGORITHMS:
+            printf("[%s]: decoding signature algorithms extension, line@%d\n", __func__, __LINE__);
             if ((ret = decode_signature_algorithms(&ch->signature_algorithms, &src, end)) != 0)
                 goto Exit;
+            printf("[%s]: number of decoded signature algorithms: %d, line@%d\n", __func__, ch->signature_algorithms.count, __LINE__);
+            break;
+            /* decode require_oqssig_on_auth extension @xinshu */
+        case PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH:
+            printf("[%s]: server get oqs signature indicator, line@%d\n", __func__, __LINE__);
+            ch->use_oqssig_on_auth = 1;
             break;
         case PTLS_EXTENSION_TYPE_KEY_SHARE:
             ch->key_shares = ptls_iovec_init(src, end - src);
@@ -4032,6 +4058,16 @@ static inline int call_on_client_hello_cb(ptls_t *tls, ptls_iovec_t server_name,
                                           size_t num_server_cert_types, const ptls_client_hello_psk_identity_t *psk_identities,
                                           size_t num_psk_identities, int incompatible_version)
 {
+    //XS---------------------------------------------------------------
+    printf("[%s]: server gets the following sig algos from client hello, %d\n", __func__, __LINE__);
+    // Print the number of signature algorithms
+    printf("Number of signature algorithms: %zu\n", num_sig_algos);
+    // Print each signature algorithm
+    printf("Signature algorithms:\n");
+    for (size_t i = 0; i < num_sig_algos; i++) {
+        printf("  [%zu]: 0x%04x\n", i, sig_algos[i]); // Print as hexadecimal
+    }
+    //XS---------------------------------------------------------------
     if (tls->ctx->on_client_hello == NULL)
         return 0;
 
@@ -4736,6 +4772,9 @@ static int server_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
         tls->key_share = key_share.algorithm;
     }
 
+    /* set require_sigoqs_on_auth to true @xinshu */
+    tls->is_oqssig_on_auth = ch->use_oqssig_on_auth;
+
     { /* send ServerHello */
         size_t ech_confirm_off = 0;
         EMIT_SERVER_HELLO(
@@ -4800,6 +4839,10 @@ static int server_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
         ptls_buffer_t *sendbuf = emitter->buf;
         ptls_buffer_push_block(sendbuf, 2, {
             if (tls->server_name != NULL) {
+                //XS---------------------------------------------------------------
+                printf("[%s]: tls->sever_name: %s, @%d\n", __func__, tls->server_name, __LINE__);
+                //XS---------------------------------------------------------------
+
                 /* In this event, the server SHALL include an extension of type "server_name" in the (extended) server hello.
                  * The "extension_data" field of this extension SHALL be empty. (RFC 6066 section 3) */
                 buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_SERVER_NAME, {});
@@ -4869,15 +4912,18 @@ static int server_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
         }
 
         /* send certificate */
+        /* todo: server should check ch->use_oqssig_on_auth first and then select the oqs cert to send
+         * here we omit this check @xinshu*/
         if ((ret = send_certificate(tls, emitter, &ch->signature_algorithms, ptls_iovec_init(NULL, 0), ch->status_request,
                                     ch->cert_compression_algos.list, ch->cert_compression_algos.count)) != 0)
             goto Exit;
         /* send certificateverify, finished, and complete the handshake */
-        if ((ret = server_finish_handshake(tls, emitter, 1, &ch->signature_algorithms)) != 0)
+        /* when sending certverify, server call do_sign or do_oqs_sign depends on ch->use_oqssig_on_auth */
+        if ((ret = server_finish_handshake(tls, emitter, 1, &ch->signature_algorithms, ch->use_oqssig_on_auth)) != 0)
             goto Exit;
     } else {
         /* send finished, and complete the handshake */
-        if ((ret = server_finish_handshake(tls, emitter, 0, NULL)) != 0)
+        if ((ret = server_finish_handshake(tls, emitter, 0, NULL, ch->use_oqssig_on_auth)) != 0)
             goto Exit;
     }
 
@@ -4898,12 +4944,14 @@ Exit:
 }
 
 static int server_finish_handshake(ptls_t *tls, ptls_message_emitter_t *emitter, int send_cert_verify,
-                                   struct st_ptls_signature_algorithms_t *signature_algorithms)
+                                   struct st_ptls_signature_algorithms_t *signature_algorithms,
+                                   int is_oqs_sig)
 {
     int ret;
 
     if (send_cert_verify) {
-        if ((ret = send_certificate_verify(tls, emitter, signature_algorithms, PTLS_SERVER_CERTIFICATE_VERIFY_CONTEXT_STRING)) !=
+        if ((ret = send_certificate_verify(tls, emitter, signature_algorithms, PTLS_SERVER_CERTIFICATE_VERIFY_CONTEXT_STRING,
+                                           is_oqs_sig)) !=
             0) {
             if (ret == PTLS_ERROR_ASYNC_OPERATION) {
                 tls->state = PTLS_STATE_SERVER_GENERATING_CERTIFICATE_VERIFY;

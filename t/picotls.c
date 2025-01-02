@@ -1204,6 +1204,7 @@ static int sign_certificate(ptls_sign_certificate_t *self, ptls_t *tls, ptls_asy
                             ptls_buffer_t *output, ptls_iovec_t input, const uint16_t *algorithms, size_t num_algorithms)
 {
     ++*(ptls_is_server(tls) ? &server_sc_callcnt : &client_sc_callcnt);
+    printf("[%s]: sign_certificate called with selected_algorithm=%d\n", __func__ , __LINE__, *selected_algorithm);
     return sc_orig->cb(sc_orig, tls, async, selected_algorithm, output, input, algorithms, num_algorithms);
 }
 
@@ -2220,7 +2221,7 @@ static void test_handshake_api(void)
 static void test_all_handshakes_core(void)
 {
     subtest("full-handshake", test_full_handshake);
-//    subtest("full-handshake+client-auth", test_full_handshake_with_client_authentication);
+    subtest("full-handshake+client-auth", test_full_handshake_with_client_authentication);
 //    subtest("hrr-handshake", test_hrr_handshake);
 //    /* resumption does not work when the client offers ECH but the server does not recognize that */
 //    if (!(can_ech(ctx, 0) && !can_ech(ctx_peer, 1))) {
@@ -2238,8 +2239,8 @@ static void test_all_handshakes_core(void)
 //    }
 //    subtest("key-update", test_key_update);
 //    subtest("pre-shared-key", test_pre_shared_key);
-    subtest("handshake-api", test_handshake_api);
-//    subtest("debug-handshake-api", debug_test_handshake_api);
+//    subtest("handshake-api", test_handshake_api);
+    subtest("debug-handshake-api", debug_test_handshake_api);
 
 }
 
