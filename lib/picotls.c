@@ -3201,7 +3201,7 @@ static int send_certificate_verify(ptls_t *tls, ptls_message_emitter_t *emitter,
 {
     size_t start_off = emitter->buf->off;
     int ret;
-    /* set is_oqs_sig */
+    /* set is_oqs_sig @xinshu*/
     int is_oqs_sig = (ptls_is_server(tls)) ? tls->is_oqssig_on_auth : tls->ctx->require_oqssig_on_auth;
 
     if (tls->ctx->sign_certificate == NULL)
