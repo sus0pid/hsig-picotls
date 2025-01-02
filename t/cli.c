@@ -662,15 +662,14 @@ int main(int argc, char **argv)
             load_certificate_chain(&ctx, cert_location);
     }
 
-    if ((ctx.certificates.count == 0) != (ctx.sign_certificate == NULL)) {
-        fprintf(stderr, "-C/-c and -k options must be used together\n");
-        return 1;
-    }
-
     /* load private key after ctx.require_oqssig_on_auth is set @xinshu */
     if (!pkey_location)
         load_private_key(&ctx, pkey_location, default_oqssig_name);
 
+    if ((ctx.certificates.count == 0) != (ctx.sign_certificate == NULL)) {
+        fprintf(stderr, "-C/-c and -k options must be used together\n");
+        return 1;
+    }
 
     if (is_server) {
 #if PICOTLS_USE_BROTLI
