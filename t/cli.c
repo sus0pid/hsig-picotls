@@ -441,8 +441,24 @@ int main(int argc, char **argv)
 {
     ERR_load_crypto_strings();
     OpenSSL_add_all_algorithms();
-    /* Explicitly load the oqs provider in addition to default, as we test oqs in . */
-    load_providers_default_context();
+
+    /* Explicitly load the oqs provider, as we test oqs in applications @xinshu */
+    // Set the default search path for providers
+    const char *provider_path = "/usr/local/lib64/ossl-modules";
+    if (!OSSL_PROVIDER_set_default_search_path(NULL, provider_path)) {
+        fprintf(stderr, "Failed to set provider search path: %s\n", provider_path);
+        exit(1);
+    }
+    printf("Provider search path set to: %s\n", provider_path);
+    // Load the OQS provider into the default context
+    OSSL_PROVIDER *oqsprovider = OSSL_PROVIDER_load(NULL, "oqsprovider");
+    if (oqsprovider == NULL) {
+        fprintf(stderr, "Failed to load OQS provider.\n");
+        exit(1);
+    }
+    printf("OQS provider successfully loaded.\n");
+    // load default openssl provider
+    OSSL_PROVIDER *dflt = OSSL_PROVIDER_load(NULL, "default");
 #if !defined(OPENSSL_NO_ENGINE)
     /* Load all compiled-in ENGINEs */
     ENGINE_load_builtin_engines();
