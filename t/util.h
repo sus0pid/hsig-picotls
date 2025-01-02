@@ -179,6 +179,7 @@ static inline X509_STORE *init_cert_store(char const *crt_file)
         fprintf(stderr, "Cannot get a new X509 store\n");
         exit(1);
     }
+    printf("[%s]: using costomised cert store: %s, %d\n", __func__, crt_file, __LINE__);
 
     return store;
 }

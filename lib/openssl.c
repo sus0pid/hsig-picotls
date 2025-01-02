@@ -1972,6 +1972,7 @@ int ptls_openssl_init_verify_certificate(ptls_openssl_verify_certificate_t *self
     if (store != NULL) {
         X509_STORE_up_ref(store);
         self->cert_store = store;
+        printf("[%s]: store is set, %d\n", __func__, __LINE__);
     } else {
         /* use default store */
         if ((self->cert_store = ptls_openssl_create_default_certificate_store()) == NULL)
