@@ -425,6 +425,7 @@ static void usage(const char *cmd)
 #if PTLS_OPENSSL_HAVE_ED25519
            ", ed25519"
 #endif
+           ", dilithium2/3/5"
            "\n",
            cmd);
     printf("Supported cipher suites:");
@@ -511,7 +512,6 @@ int main(int argc, char **argv)
         case 'o':
             /* require oqs signature algo on auth @xinshu */
             ctx.require_oqssig_on_auth = 1;
-
             break;
         case 'k':
             // test default oqs signature algo @xinshu
