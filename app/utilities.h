@@ -15,7 +15,6 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <openssl/pem.h>
-#include "picotls/pembase64.h"
 #include "picotls/openssl.h"
 
 enum Sig_schemes {

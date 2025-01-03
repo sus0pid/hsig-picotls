@@ -148,13 +148,15 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
     ADD_LIBRARY(picotls-openssl lib/openssl.c)
     TARGET_LINK_LIBRARIES(picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} picotls-core ${CMAKE_DL_LIBS})
-    ADD_EXECUTABLE(cli t/cli.c lib/pembase64.c)
-    TARGET_LINK_LIBRARIES(cli picotls-openssl picotls-core)
+    ADD_EXECUTABLE(hsig-client app/client.c)
+    TARGET_LINK_LIBRARIES(hsig-client picotls-openssl picotls-core)
+
+
+
 
     # for oqs sigalgo tests
     set(CMAKE_BUILD_TYPE Debug)
     set(PTLS_OPENSSL_HAVE_OQS 1)
-
     ADD_EXECUTABLE(test-openssl.t
         ${MINICRYPTO_LIBRARY_FILES}
         ${MINICRYPTO_AEGIS_FILES}
