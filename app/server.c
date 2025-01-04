@@ -337,7 +337,7 @@ int main(int argc, char **argv) {
             printf("setting: mutual authentication mode\n");
             break;
         case 'h':
-            client_usage(argv[0]);
+            server_usage(argv[0]);
             goto Exit;
         default:
             goto Exit;
