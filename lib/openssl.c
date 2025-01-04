@@ -1908,7 +1908,7 @@ Exit:
 }
 
 /* wrote new verify cert chain function @xinshu */
-static int test_verify_cert_chain(X509_STORE *ustore, X509 *cert, STACK_OF(X509) * chain, int is_server, const char *server_name,
+static int test_verify_cert_chain(X509_STORE *ustore, X509 *ucert, STACK_OF(X509) * chain, int is_server, const char *server_name,
                              int *ossl_x509_err)
 {
     X509_STORE_CTX *verify_ctx;
@@ -1947,7 +1947,21 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *cert, STACK_OF(X509)
         fprintf(stderr, "X509 chain is NULL (this may be fine if no intermediates are needed)\n");
     }
 
-    if (X509_STORE_CTX_init(verify_ctx, store, cert, chain) != 1) {
+    const char *cert_file = "assets/dilithium3/dilithium3_srv.crt";
+    if ((fp = fopen(cert_file, "r")) == NULL) {
+        fprintf(stderr, "Failed to open certificate file: %s\n", cert_file);
+        goto Cleanup;
+    }
+    X509 *cert = NULL;
+    if ((cert = PEM_read_X509(fp, NULL, NULL, NULL)) == NULL) {
+        fprintf(stderr, "Failed to read certificate from file: %s\n", cert_file);
+        ERR_print_errors_fp(stderr);
+        goto Cleanup;
+    }
+    fclose(fp);
+
+    if (X509_STORE_CTX_init(verify_ctx, store, cert, NULL) != 1) {
+        ERR_print_errors_fp(stderr);
         ret = PTLS_ERROR_LIBRARY;
         goto Exit;
     }
