@@ -366,11 +366,14 @@ int main(int argc, char **argv) {
     if (!is_oqs_sig)
     {
         /* traditional signature algos */
+        printf("is_oqs_sig = %d", is_oqs_sig);
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
         sprintf(capath, "%s%s%s%s", certsdir, "ca", sep, "test-ca.crt");
-    } else
+    }
+    else
     {
+        printf("is_oqs_sig = %d", is_oqs_sig);
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
