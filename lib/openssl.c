@@ -1956,7 +1956,7 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *ucert, STACK_OF(X509
     if ((cert = PEM_read_X509(fp, NULL, NULL, NULL)) == NULL) {
         fprintf(stderr, "Failed to read certificate from file: %s\n", cert_file);
         ERR_print_errors_fp(stderr);
-        goto Cleanup;
+        goto Exit;
     }
     fclose(fp);
 
