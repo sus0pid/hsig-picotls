@@ -325,19 +325,19 @@ int main(int argc, char **argv) {
         goto Exit;
     }
 
-    int ch, message_size, is_oqs_sig, is_mutual_auth;
+    int ch, is_oqs_auth = 0, is_mutual_auth = 0;
     while ((ch = getopt(argc, argv, "pmh")) != -1) {
         switch (ch) {
         case 'p':
-            is_oqs_sig = 1;
-            printf("setting: load post-quantum signature algorithm\n");
+            is_oqs_auth = 1;
+            printf("setting: use post-quantum signature algorithm\n");
             break;
         case 'm':
             is_mutual_auth = 1;
             printf("setting: mutual authentication mode\n");
             break;
         case 'h':
-            server_usage(argv[0]);
+            client_usage(argv[0]);
             goto Exit;
         default:
             goto Exit;
@@ -363,17 +363,17 @@ int main(int argc, char **argv) {
     char *certsdir = "assets/";
 
     /* for simplicity, client and server share the same pair of cert&pkey */
-    if (!is_oqs_sig)
+    if (!is_oqs_auth)
     {
         /* traditional signature algos */
-        printf("is_oqs_sig = %d\n", is_oqs_sig);
+        printf("is_oqs_auth = %d\n", is_oqs_auth);
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
         sprintf(capath, "%s%s%s%s", certsdir, "ca", sep, "test-ca.crt");
     }
     else
     {
-        printf("is_oqs_sig = %d\n", is_oqs_sig);
+        printf("is_oqs_auth = %d\n", is_oqs_auth);
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
@@ -384,7 +384,7 @@ int main(int argc, char **argv) {
     ptls_iovec_t cert;
 
     setup_certificate(&cert, certpath);
-    setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
+    setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_auth);
 
     ptls_context_t ctx = {.random_bytes = ptls_openssl_random_bytes,
                           .get_time = &ptls_get_time,
