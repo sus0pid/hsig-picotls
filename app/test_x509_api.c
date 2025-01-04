@@ -1,5 +1,6 @@
 //
 // Created by xinshu on 04/01/25.
+gcc -o xxxxx xxxxx.c -I/usr/local/include -L/usr/local/lib64 -lssl -lcrypto -ldl
 //
 #include <stdio.h>
 #include <openssl/x509.h>
@@ -66,7 +67,7 @@ Cleanup:
 
 int main() {
     const char *cert_file = "assets/rsa/cert.pem";
-    const char *ca_file = "assets/ca/test-ca.pem";
+    const char *ca_file = "assets/ca/test-ca.crt";
 
     if (test_x509_store_ctx_init(cert_file, ca_file) == 0) {
         printf("X509_STORE_CTX_init test passed\n");
