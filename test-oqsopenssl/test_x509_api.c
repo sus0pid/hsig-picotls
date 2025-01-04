@@ -77,8 +77,10 @@ int main() {
     OSSL_PROVIDER *oqs_provider = load_oqs_provider(libctx);
 
 
-    const char *cert_file = "../app/assets/rsa/cert.pem";
-    const char *ca_file = "../app/assets/ca/test-ca.crt";
+//    const char *cert_file = "../app/assets/rsa/cert.pem";
+//    const char *ca_file = "../app/assets/ca/test-ca.crt";
+    const char *cert_file = "../app/assets/dilithium3/dilithium3_srv.crt";
+    const char *ca_file = "../app/assets/oqs-ca/dilithium3_CA.crt";
 
     if (test_x509_store_ctx_init(cert_file, ca_file) == 0) {
         printf("X509_STORE_CTX_init test passed\n");
