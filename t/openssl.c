@@ -341,14 +341,14 @@ static void test_oqs_cert_verify(void)
     int ret, ossl_x509_err;
 
     /* expect fail when no CA is registered */
-    ret = test_verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
     ok(ret == PTLS_ALERT_UNKNOWN_CA);
 
     /* expect success after registering the CA */
     X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
     ret = X509_LOOKUP_load_file(lookup, "app/assets/oqs-ca/dilithium3_CA.crt", X509_FILETYPE_PEM);
     ok(ret);
-    ret = test_verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
     ok(ret == 0);
 
     X509_free(cert);
