@@ -425,7 +425,7 @@ int main(int argc, char **argv) {
     }
 
     int ch, message_size, is_oqs_sig = 0, is_mutual_auth = 0;
-    while ((ch = getopt(argc, argv, "n:pmh")) != -1) {
+    while ((ch = getopt(argc, argv, "pmn:h")) != -1) {
         switch (ch) {
         case 'p':
             is_oqs_sig = 1;
