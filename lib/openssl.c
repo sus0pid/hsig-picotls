@@ -1837,6 +1837,8 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
     int ret;
     *ossl_x509_err = 0;
 
+    printf("[%s]: is_server = %d, server_name = %s, line%d\n", __func__, is_server, server_name, __LINE__);
+
     /* verify certificate chain */
     if ((verify_ctx = X509_STORE_CTX_new()) == NULL) {
         ret = PTLS_ERROR_NO_MEMORY;
@@ -1919,14 +1921,16 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *cert, STACK_OF(X509)
         goto Exit;
     }
 
+    printf("[%s]: is_server = %d, server_name = %s, line%d\n", __func__, is_server, server_name, __LINE__);
+
     X509_STORE *store = X509_STORE_new();
-    ret = X509_STORE_load_locations(store, "app/assets/oqs-ca/dilithium3_CA.crt", NULL);
+    ret = X509_STORE_load_locations(store, "assets/oqs-ca/dilithium3_CA.crt", NULL);
     if (ret != 1) {
         fprintf(stderr, "Failed to load oqs CA certificates\n");
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    ret = X509_STORE_load_locations(store, "app/assets/ca/test-ca.crt", NULL);
+    ret = X509_STORE_load_locations(store, "assets/ca/test-ca.crt", NULL);
     if (ret != 1) {
         fprintf(stderr, "Failed to load trad CA certificates\n");
         ERR_print_errors_fp(stderr);
@@ -1944,7 +1948,6 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *cert, STACK_OF(X509)
     }
 
     if (X509_STORE_CTX_init(verify_ctx, store, cert, chain) != 1) {
-        ERR_print_errors_fp(stderr);
         ret = PTLS_ERROR_LIBRARY;
         goto Exit;
     }
