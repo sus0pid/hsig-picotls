@@ -392,9 +392,9 @@ static void test_cert_verify(void)
 static void setup_oqs_certificate(ptls_iovec_t *dst, const char *sig_name)
 {
     char certpath[300];
-    const char *basedir = "oqs-cert/";
+    const char *basedir = "app/assets/";
     const char *sep = "/";
-    sprintf(certpath, "%s%s%s%s%s%s", basedir, sep, sig_name, sep, sig_name, "_srv.crt");
+    sprintf(certpath, "%s%s%s%s%s", basedir, sig_name, sep, sig_name, "_srv.crt");
     printf("certpath: %s", certpath);
 
     FILE *cert_fp = fopen(certpath, "rb");
