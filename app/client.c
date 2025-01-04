@@ -488,7 +488,8 @@ int main(int argc, char **argv) {
         setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
     }
     /* setup ca cert file */
-    ptls_openssl_init_verify_certificate(&openssl_verify_certificate, init_cert_store(capath));
+//    ptls_openssl_init_verify_certificate(&openssl_verify_certificate, init_cert_store(capath));
+    ptls_openssl_init_verify_certificate(&openssl_verify_certificate, NULL);
 
     ptls_context_t ctx = {.random_bytes = ptls_openssl_random_bytes,
                           .get_time = &ptls_get_time,
