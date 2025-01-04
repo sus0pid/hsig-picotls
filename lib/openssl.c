@@ -1961,7 +1961,7 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *ucert, STACK_OF(X509
         fprintf(stderr, "X509 chain is NULL (this may be fine if no intermediates are needed)\n");
     }
 
-    if (X509_STORE_CTX_init(verify_ctx, store, cert, NULL) != 1) {
+    if (X509_STORE_CTX_init(verify_ctx, store, cert, chain) != 1) {
         ERR_print_errors_fp(stderr);
         ret = PTLS_ERROR_LIBRARY;
         goto Exit;
