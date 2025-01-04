@@ -1937,16 +1937,6 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *ucert, STACK_OF(X509
         return -1;
     }
 
-    if (store == NULL) {
-        fprintf(stderr, "X509_STORE is NULL\n");
-    }
-    if (cert == NULL) {
-        fprintf(stderr, "X509 certificate is NULL\n");
-    }
-    if (chain == NULL) {
-        fprintf(stderr, "X509 chain is NULL (this may be fine if no intermediates are needed)\n");
-    }
-    
     FILE *fp = NULL;
     const char *cert_file = "assets/dilithium3/dilithium3_srv.crt";
     if ((fp = fopen(cert_file, "r")) == NULL) {
@@ -1960,6 +1950,16 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *ucert, STACK_OF(X509
         goto Exit;
     }
     fclose(fp);
+
+    if (store == NULL) {
+        fprintf(stderr, "X509_STORE is NULL\n");
+    }
+    if (cert == NULL) {
+        fprintf(stderr, "X509 certificate is NULL\n");
+    }
+    if (chain == NULL) {
+        fprintf(stderr, "X509 chain is NULL (this may be fine if no intermediates are needed)\n");
+    }
 
     if (X509_STORE_CTX_init(verify_ctx, store, cert, NULL) != 1) {
         ERR_print_errors_fp(stderr);
