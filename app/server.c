@@ -258,7 +258,7 @@ int run_server(const char* host, const char* port, ptls_context_t *ctx, ptls_han
         perror("setsockopt(SO_REUSEADDR) failed");
         return 1;
     }
-    if (bind(listen_fd, &sa, salen) != 0) {
+    if (bind(listen_fd, (struct sockaddr *)&sa, salen) != 0) {
         perror("bind(2) failed");
         return 1;
     }
