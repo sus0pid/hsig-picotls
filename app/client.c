@@ -424,7 +424,7 @@ int main(int argc, char **argv) {
         goto Exit;
     }
 
-    int ch, message_size, is_oqs_sig, is_mutual_auth;
+    int ch, message_size, is_oqs_sig = 0, is_mutual_auth = 0;
     while ((ch = getopt(argc, argv, "n:pmh")) != -1) {
         switch (ch) {
         case 'p':

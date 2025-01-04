@@ -1833,8 +1833,6 @@ Exit:
 static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * chain, int is_server, const char *server_name,
                              int *ossl_x509_err)
 {
-    printf("[%s]: verify certificate chain, %d\n", __func__, __LINE__);
-
     X509_STORE_CTX *verify_ctx;
     int ret;
     *ossl_x509_err = 0;
@@ -1899,6 +1897,8 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
 Exit:
     if (verify_ctx != NULL)
         X509_STORE_CTX_free(verify_ctx);
+    if (ret)
+        printf("[%s]: verify certificate chain, error ret = %d, line%d\n", __func__, ret, __LINE__);
     return ret;
 }
 
