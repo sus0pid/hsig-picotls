@@ -418,9 +418,9 @@ static void setup_oqs_certificate(ptls_iovec_t *dst, const char *sig_name)
 static void setup_oqs_sign_certificate(ptls_openssl_sign_certificate_t *sc, const char *sig_name)
 {
     char *keypath[300];
-    const char *basedir = "oqs-cert/";
+    const char *basedir = "app/assets/";
     const char *sep = "/";
-    sprintf(keypath, "%s%s%s%s%s%s", basedir, sep, sig_name, sep, sig_name, "_srv.key");
+    sprintf(keypath, "%s%s%s%s%s", basedir, sig_name, sep, sig_name, "_srv.key");
     printf("keypath: %s", keypath);
 
     FILE *key_fp = fopen(keypath, "rb");
