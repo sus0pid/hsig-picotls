@@ -1946,7 +1946,8 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *ucert, STACK_OF(X509
     if (chain == NULL) {
         fprintf(stderr, "X509 chain is NULL (this may be fine if no intermediates are needed)\n");
     }
-
+    
+    FILE *fp = NULL;
     const char *cert_file = "assets/dilithium3/dilithium3_srv.crt";
     if ((fp = fopen(cert_file, "r")) == NULL) {
         fprintf(stderr, "Failed to open certificate file: %s\n", cert_file);
