@@ -35,6 +35,9 @@ unsigned use_early_data = 0;
 unsigned update_session_ticket = 0;
 unsigned use_dhe_on_psk = 0;
 unsigned enable_session_ticket_resumption = 0;
+#define TICKET_PATH "client_ticket.bin" /* not using it */
+char *input_file = NULL;
+unsigned enable_bench_setting = 0;
 
 
 /* we test full handshake--tls-tcp */
@@ -85,7 +88,6 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
     int sockfd;
     struct sockaddr_in server_addr;
     socklen_t salen;
-    clock_gettime(CLOCK_REALTIME, &cnt_start); /*timestamp of handle 0-rtt reply back*/
 
     if (resolve_address((struct sockaddr *) &server_addr, &salen, host, port, family, SOCK_STREAM,
                         IPPROTO_TCP) != 0)
@@ -117,7 +119,8 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
     }
 
     /* client send client hello */
-    ptls_set_server_name(client, SNI, 0);
+    ptls_set_server_name(client, server_name, 0);
+    clock_gettime(CLOCK_REALTIME, &cnt_start); /*timestamp of handle 0-rtt reply back*/
     if ((ret = ptls_handshake(client, &encbuf, NULL, NULL, client_hs_prop)) != PTLS_ERROR_IN_PROGRESS) {
         fprintf(stderr, "ptls_handshake:%d\n", ret);
         ret = 1;
@@ -196,7 +199,7 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                             if (input_file != input_file_is_benchmark)
                                 repeat_while_eintr(write(1, rbuf.base, rbuf.off), { goto Exit; });
 
-                            /*check if is early data reply*/
+                            /*check if it is early data reply*/
                             if (memcmp(rbuf.base, resp, rbuf.off) == 0) {
                                 clock_gettime(CLOCK_REALTIME, &event_end); /*timestamp of handle 0-rtt reply back*/
                                 printf("\n\n-----------------Time measurement retults-----------------\n");

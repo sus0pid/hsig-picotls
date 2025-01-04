@@ -17,6 +17,8 @@
 #include <openssl/pem.h>
 #include "picotls/openssl.h"
 
+int family = AF_INET;
+
 enum Sig_schemes {
     DILITHIUM2,
     DILITHIUM3,
