@@ -152,6 +152,8 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     TARGET_LINK_LIBRARIES(cli picotls-openssl picotls-core)
     ADD_EXECUTABLE(hsig-client app/client.c)
     TARGET_LINK_LIBRARIES(hsig-client picotls-openssl picotls-core)
+    ADD_EXECUTABLE(hsig-server app/server.c)
+    TARGET_LINK_LIBRARIES(hsig-server picotls-openssl picotls-core)
 
 
 
@@ -245,6 +247,7 @@ FIND_LIBRARY(LIBC_RESOLV_LIB "resolv")
 IF (OPENSSL_FOUND AND LIBC_RESOLV_LIB)
     TARGET_LINK_LIBRARIES(cli ${LIBC_RESOLV_LIB})
     TARGET_LINK_LIBRARIES(hsig-client ${LIBC_RESOLV_LIB})
+    TARGET_LINK_LIBRARIES(hsig-server ${LIBC_RESOLV_LIB})
 ENDIF ()
 
 IF (BUILD_FUZZER)
