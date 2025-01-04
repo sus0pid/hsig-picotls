@@ -35,7 +35,6 @@ unsigned use_early_data = 0;
 unsigned update_session_ticket = 0;
 unsigned use_dhe_on_psk = 0;
 unsigned enable_session_ticket_resumption = 0;
-#define TICKET_PATH "client_ticket.bin" /* not using it */
 char *input_file = NULL;
 unsigned enable_bench_setting = 0;
 
@@ -174,7 +173,7 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                     if ((ret = ptls_handshake(client, &encbuf, bytebuf + off, &leftlen, client_hs_prop)) == 0) {
                         state = IN_1RTT;
                         assert(ptls_is_server(client) || client_hs_prop->client.early_data_acceptance != PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN);
-                        ech_save_retry_configs();
+//                        ech_save_retry_configs();
                         /* release data sent as early-data, if server accepted it */
                         if (client_hs_prop->client.early_data_acceptance == PTLS_EARLY_DATA_ACCEPTED)
                             shift_buffer(&ptbuf, early_bytes_sent);
@@ -185,7 +184,7 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                     } else {
                         if (ret == PTLS_ALERT_ECH_REQUIRED) {
                             assert(!ptls_is_server(client));
-                            ech_save_retry_configs();
+//                            ech_save_retry_configs();
                         }
                         if (encbuf.off != 0)
                             repeat_while_eintr(write(sockfd, encbuf.base, encbuf.off), { break; });

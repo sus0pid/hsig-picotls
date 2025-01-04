@@ -17,23 +17,25 @@
 #include <openssl/pem.h>
 #include "picotls/openssl.h"
 
+#define TICKET_PATH "client_ticket.bin" /* not using it */
+
 int family = AF_INET;
 
 enum Sig_schemes {
-    DILITHIUM2,
-    DILITHIUM3,
-    DILITHIUM5,
-    RSA,
-    ECDSA,
+    SIG_DILITHIUM2,
+    SIG_DILITHIUM3,
+    SIG_DILITHIUM5,
+    SIG_RSA,
+    SIG_ECDSA,
     SIG_SCHEMES_COUNT
 };
 
 static const char *sig_names[] __attribute__((unused)) = {
-    [DILITHIUM2] = "dilithium2",
-    [DILITHIUM3] = "dilithium3",
-    [DILITHIUM5] = "dilithium5",
-    [RSA] = "rsa",
-    [ECDSA] = "ecdsa",
+    [SIG_DILITHIUM2] = "dilithium2",
+    [SIG_DILITHIUM3] = "dilithium3",
+    [SIG_DILITHIUM5] = "dilithium5",
+    [SIG_RSA] = "rsa",
+    [SIG_ECDSA] = "ecdsa",
 };
 
 _Static_assert(SIG_SCHEMES_COUNT ==
@@ -179,19 +181,19 @@ static inline int resolve_address(struct sockaddr *sa, socklen_t *salen, const c
 /* sentinels indicating that the endpoint is in benchmark mode */
 static const char input_file_is_benchmark[] = "is:benchmark";
 
-static void ech_save_retry_configs(void)
-{
-    if (ech.retry.configs.base == NULL)
-        return;
-
-    FILE *fp;
-    if ((fp = fopen(ech.retry.fn, "wt")) == NULL) {
-        fprintf(stderr, "failed to write to ECH config file:%s:%s\n", ech.retry.fn, strerror(errno));
-        exit(1);
-    }
-    fwrite(ech.retry.configs.base, 1, ech.retry.configs.len, fp);
-    fclose(fp);
-}
+//static void ech_save_retry_configs(void)
+//{
+//    if (ech.retry.configs.base == NULL)
+//        return;
+//
+//    FILE *fp;
+//    if ((fp = fopen(ech.retry.fn, "wt")) == NULL) {
+//        fprintf(stderr, "failed to write to ECH config file:%s:%s\n", ech.retry.fn, strerror(errno));
+//        exit(1);
+//    }
+//    fwrite(ech.retry.configs.base, 1, ech.retry.configs.len, fp);
+//    fclose(fp);
+//}
 
 static int handle_connection(int sockfd, ptls_context_t *ctx, const char *server_name, const char *input_file,
                              ptls_handshake_properties_t *hsprop, int request_key_update, int keep_sender_open,
