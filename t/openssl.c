@@ -324,7 +324,7 @@ static ptls_key_exchange_context_t *key_from_pem(const char *pem)
 /* test oqs cert verify */
 static void test_oqs_cert_verify(void)
 {
-    FILE *cert_fp = fopen("oqs-cert/dilithium3/dilithium3_srv.crt", "rb");
+    FILE *cert_fp = fopen("app/assets/dilithium3/dilithium3_srv.crt", "rb");
     if (!cert_fp) {
         fprintf(stderr, "Unable to open dilithium3 cert file!\n");
         exit(1);
@@ -346,7 +346,7 @@ static void test_oqs_cert_verify(void)
 
     /* expect success after registering the CA */
     X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
-    ret = X509_LOOKUP_load_file(lookup, "oqs-cert/ca/dilithium3_CA.crt", X509_FILETYPE_PEM);
+    ret = X509_LOOKUP_load_file(lookup, "app/assets/oqs-ca/dilithium3_CA.crt", X509_FILETYPE_PEM);
     ok(ret);
     ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
     ok(ret == 0);
