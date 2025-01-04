@@ -60,7 +60,6 @@ int test_x509_store_ctx_init(const char *cert_file, const char *ca_file) {
     ret = 0;
 
 Cleanup:
-    if (fp != NULL) fclose(fp);
     if (cert != NULL) X509_free(cert);
     if (store != NULL) X509_STORE_free(store);
     if (ctx != NULL) X509_STORE_CTX_free(ctx);
