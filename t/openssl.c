@@ -348,7 +348,7 @@ static void test_oqs_cert_verify(void)
     X509_LOOKUP *lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
     ret = X509_LOOKUP_load_file(lookup, "app/assets/oqs-ca/dilithium3_CA.crt", X509_FILETYPE_PEM);
     ok(ret);
-    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ret = test_verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
     ok(ret == 0);
 
     X509_free(cert);
