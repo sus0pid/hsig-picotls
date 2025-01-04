@@ -341,7 +341,7 @@ static void test_oqs_cert_verify(void)
     int ret, ossl_x509_err;
 
     /* expect fail when no CA is registered */
-    ret = verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
+    ret = test_verify_cert_chain(store, cert, chain, 0, "test.example.com", &ossl_x509_err);
     ok(ret == PTLS_ALERT_UNKNOWN_CA);
 
     /* expect success after registering the CA */
