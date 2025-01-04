@@ -1914,6 +1914,107 @@ Exit:
     return ret;
 }
 
+/* wrote new verify cert chain function @xinshu */
+static int test_verify_cert_chain(X509_STORE *ustore, X509 *cert, STACK_OF(X509) * chain, int is_server, const char *server_name,
+                             int *ossl_x509_err)
+{
+    X509_STORE_CTX *verify_ctx;
+    int ret;
+    *ossl_x509_err = 0;
+
+    /* verify certificate chain */
+    if ((verify_ctx = X509_STORE_CTX_new()) == NULL) {
+        ret = PTLS_ERROR_NO_MEMORY;
+        goto Exit;
+    }
+
+    X509_STORE *store = X509_STORE_new();
+    ret = X509_STORE_load_locations(store, "assets/oqs-ca/dilithium3_CA.crt", NULL);
+    if (ret != 1) {
+        fprintf(stderr, "Failed to load oqs CA certificates\n");
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+    ret = X509_STORE_load_locations(store, "assets/ca/test-ca.crt", NULL);
+    if (ret != 1) {
+        fprintf(stderr, "Failed to load trad CA certificates\n");
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    if (store == NULL) {
+        fprintf(stderr, "X509_STORE is NULL\n");
+    }
+    if (cert == NULL) {
+        fprintf(stderr, "X509 certificate is NULL\n");
+    }
+    if (chain == NULL) {
+        fprintf(stderr, "X509 chain is NULL (this may be fine if no intermediates are needed)\n");
+    }
+
+    if (X509_STORE_CTX_init(verify_ctx, store, cert, chain) != 1) {
+        ERR_print_errors_fp(stderr);
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+
+    { /* setup verify params */
+        X509_VERIFY_PARAM *params = X509_STORE_CTX_get0_param(verify_ctx);
+        X509_VERIFY_PARAM_set_purpose(params, is_server ? X509_PURPOSE_SSL_CLIENT : X509_PURPOSE_SSL_SERVER);
+        X509_VERIFY_PARAM_set_depth(params, 98); /* use the default of OpenSSL 1.0.2 and above; see `man SSL_CTX_set_verify` */
+        /* when _acting_ as client, set the server name if provided*/
+        if (!is_server && server_name != NULL) {
+            if (ptls_server_name_is_ipaddr(server_name)) {
+                X509_VERIFY_PARAM_set1_ip_asc(params, server_name);
+            } else {
+                X509_VERIFY_PARAM_set1_host(params, server_name, strlen(server_name));
+                X509_VERIFY_PARAM_set_hostflags(params, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+            }
+        }
+    }
+
+    if (X509_verify_cert(verify_ctx) != 1) {
+        *ossl_x509_err = X509_STORE_CTX_get_error(verify_ctx);
+        switch (*ossl_x509_err) {
+        case X509_V_ERR_OUT_OF_MEM:
+            ret = PTLS_ERROR_NO_MEMORY;
+            break;
+        case X509_V_ERR_CERT_REVOKED:
+            ret = PTLS_ALERT_CERTIFICATE_REVOKED;
+            break;
+        case X509_V_ERR_CERT_NOT_YET_VALID:
+        case X509_V_ERR_CERT_HAS_EXPIRED:
+            ret = PTLS_ALERT_CERTIFICATE_EXPIRED;
+            break;
+        case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+        case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
+        case X509_V_ERR_CERT_UNTRUSTED:
+        case X509_V_ERR_CERT_REJECTED:
+            ret = PTLS_ALERT_UNKNOWN_CA;
+            break;
+        case X509_V_ERR_HOSTNAME_MISMATCH:
+        case X509_V_ERR_INVALID_CA:
+            ERR_print_errors_fp(stderr);
+            ret = PTLS_ALERT_BAD_CERTIFICATE;
+            break;
+        default:
+            ret = PTLS_ALERT_CERTIFICATE_UNKNOWN;
+            break;
+        }
+        goto Exit;
+    }
+
+    ret = 0;
+
+Exit:
+    if (verify_ctx != NULL)
+        X509_STORE_CTX_free(verify_ctx);
+    if (ret)
+        printf("[%s]: verify certificate chain, error ret = %d, line%d\n", __func__, ret, __LINE__);
+    return ret;
+}
+
+
 static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char *server_name,
                        int (**verifier)(void *, uint16_t, ptls_iovec_t, ptls_iovec_t), void **verify_data,
                        ptls_iovec_t *certs, size_t num_certs, int is_oqs_sig)
@@ -1941,7 +2042,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
             }
             sk_X509_push(chain, interm);
         }
-        ret = verify_cert_chain(self->cert_store, cert, chain, ptls_is_server(tls), server_name, &ossl_x509_err);
+        ret = test_verify_cert_chain(self->cert_store, cert, chain, ptls_is_server(tls), server_name, &ossl_x509_err);
     } else {
         ret = PTLS_ALERT_CERTIFICATE_REQUIRED;
         ossl_x509_err = 0;
