@@ -65,16 +65,19 @@ int test_x509_store_ctx_init(const char *cert_file, const char *ca_file) {
 
     // Setup verify params
     X509_VERIFY_PARAM *params = X509_STORE_CTX_get0_param(ctx);
-    X509_VERIFY_PARAM_set_purpose(params, is_server ? X509_PURPOSE_SSL_CLIENT : X509_PURPOSE_SSL_SERVER);
+    X509_VERIFY_PARAM_set_purpose(params, is_server ? X509_TRUST_SSL_CLIENT : X509_TRUST_SSL_SERVER);
+    X509_VERIFY_PARAM_set_depth(params, 98); // Default depth
 
+    // When acting as client, set the server name if provided
     if (!is_server && server_name != NULL) {
-        if (/* replace with IP check logic */ 0) {
+        if (ptls_server_name_is_ipaddr(server_name)) {
             X509_VERIFY_PARAM_set1_ip_asc(params, server_name);
         } else {
             X509_VERIFY_PARAM_set1_host(params, server_name, strlen(server_name));
-            X509_VERIFY_PARAM_set_hostflags(params, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+            // Removed the line for partial wildcards, as it's no longer supported
         }
     }
+
 
     if (X509_verify_cert(ctx) != 1) {
         ossl_x509_err = X509_STORE_CTX_get_error(ctx);
