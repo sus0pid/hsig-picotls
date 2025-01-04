@@ -321,7 +321,7 @@ int main(int argc, char **argv) {
     res_init();
 
     if (argc < 3) {
-        client_usage(argv[0]);
+        server_usage(argv[0]);
         goto Exit;
     }
 
