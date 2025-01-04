@@ -1842,7 +1842,18 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
         ret = PTLS_ERROR_NO_MEMORY;
         goto Exit;
     }
+    /* debugging */
+    printf("Leaf certificate:\n");
+    X509_print_fp(stdout, cert);
+
+    printf("Certificate chain:\n");
+    for (int i = 0; i < sk_X509_num(chain); i++) {
+        X509 *cert_in_chain = sk_X509_value(chain, i);
+        X509_print_fp(stdout, cert_in_chain);
+    }
+
     if (X509_STORE_CTX_init(verify_ctx, store, cert, chain) != 1) {
+        ERR_print_errors_fp(stderr);
         ret = PTLS_ERROR_LIBRARY;
         goto Exit;
     }
@@ -1883,6 +1894,7 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
             break;
         case X509_V_ERR_HOSTNAME_MISMATCH:
         case X509_V_ERR_INVALID_CA:
+            ERR_print_errors_fp(stderr);
             ret = PTLS_ALERT_BAD_CERTIFICATE;
             break;
         default:
