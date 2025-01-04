@@ -3,9 +3,12 @@
 gcc -o xxxxx xxxxx.c -I/usr/local/include -L/usr/local/lib64 -lssl -lcrypto -ldl
 //
 #include <stdio.h>
+#include <stddef.h>
+#include <sys/types.h>
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
 #include <openssl/err.h>
+#include "oqs_util.h"
 
 int test_x509_store_ctx_init(const char *cert_file, const char *ca_file) {
     int ret = -1;
@@ -66,14 +69,27 @@ Cleanup:
 }
 
 int main() {
-    const char *cert_file = "assets/rsa/cert.pem";
-    const char *ca_file = "assets/ca/test-ca.crt";
+    OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
+    T(libctx != NULL);
+    // Load default provider
+    OSSL_PROVIDER *default_provider = load_default_provider(libctx);
+    // Load OQS provider
+    OSSL_PROVIDER *oqs_provider = load_oqs_provider(libctx);
+
+
+    const char *cert_file = "../app/assets/rsa/cert.pem";
+    const char *ca_file = "../app/assets/ca/test-ca.crt";
 
     if (test_x509_store_ctx_init(cert_file, ca_file) == 0) {
         printf("X509_STORE_CTX_init test passed\n");
     } else {
         printf("X509_STORE_CTX_init test failed\n");
     }
+
+    // Unload providers and free library context
+    OSSL_PROVIDER_unload(default_provider);
+    OSSL_PROVIDER_unload(oqs_provider);
+    OSSL_LIB_CTX_free(libctx);
 
     return 0;
 }
