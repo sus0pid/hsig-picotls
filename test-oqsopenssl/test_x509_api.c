@@ -13,6 +13,7 @@
 
 int test_x509_store_ctx_init(const char *cert_file, const char *ca_file) {
     int ret = -1;
+    int ossl_x509_err = 0;
     X509 *cert = NULL;
     X509_STORE *store = NULL;
     X509_STORE_CTX *ctx = NULL;
@@ -58,6 +59,29 @@ int test_x509_store_ctx_init(const char *cert_file, const char *ca_file) {
     }
 
     printf("X509_STORE_CTX_init succeeded\n");
+
+    int is_server = 0;
+    char *server_name = "test.example.com";
+
+    // Setup verify params
+    X509_VERIFY_PARAM *params = X509_STORE_CTX_get0_param(ctx);
+    X509_VERIFY_PARAM_set_purpose(params, is_server ? X509_PURPOSE_SSL_CLIENT : X509_PURPOSE_SSL_SERVER);
+
+    if (!is_server && server_name != NULL) {
+        if (/* replace with IP check logic */ 0) {
+            X509_VERIFY_PARAM_set1_ip_asc(params, server_name);
+        } else {
+            X509_VERIFY_PARAM_set1_host(params, server_name, strlen(server_name));
+            X509_VERIFY_PARAM_set_hostflags(params, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+        }
+    }
+
+    if (X509_verify_cert(ctx) != 1) {
+        ossl_x509_err = X509_STORE_CTX_get_error(ctx);
+        printf("Certificate verification failed: %d\n", ossl_x509_err);
+        goto Cleanup;
+    }
+
     ret = 0;
 
 Cleanup:
@@ -67,6 +91,7 @@ Cleanup:
 
     return ret;
 }
+
 
 int main() {
     OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
