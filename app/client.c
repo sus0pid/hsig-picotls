@@ -41,7 +41,7 @@ unsigned enable_bench_setting = 0;
 
 /* we test full handshake--tls-tcp */
 static int run_client(const char* host, const char *port, ptls_context_t *ctx,
-                          ptls_handshake_properties_t *client_hs_prop, int request_key_update,
+                          ptls_handshake_properties_t *client_hs_prop,
                           int keep_sender_open, int message_size, double *cnt_time_cost, double *early_time_cost)
 {
     int inputfd = 0, ret = 0, is_shutdown = 0, num_msg_sent = 0;
@@ -77,7 +77,7 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
     if (use_dhe_on_psk)
         ctx->require_dhe_on_psk = 1; /*enable dhe on 0-rtt*/
 
-    ptls_t *client = ptls_new(ctx, server_name == NULL);
+    ptls_t *client = ptls_new(ctx, 0);
     ptls_buffer_t rbuf, encbuf, ptbuf;
     ptls_buffer_init(&rbuf, "", 0);
     ptls_buffer_init(&encbuf, "", 0);
@@ -118,18 +118,21 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
     }
 
     /* client send client hello */
-    ptls_set_server_name(client, server_name, 0);
-    clock_gettime(CLOCK_REALTIME, &cnt_start); /*timestamp of handle 0-rtt reply back*/
-    if ((ret = ptls_handshake(client, &encbuf, NULL, NULL, client_hs_prop)) != PTLS_ERROR_IN_PROGRESS) {
-        fprintf(stderr, "ptls_handshake:%d\n", ret);
-        ret = 1;
-        goto Exit;
-    }
-    /* client send early data */
-    if (use_early_data) {
-        clock_gettime(CLOCK_REALTIME, &event_start);
-        ret = ptls_send(client, &encbuf, req, strlen(req));
-        assert(ret == 0);
+    if (server_name != NULL)
+    {
+        ptls_set_server_name(client, server_name, 0);
+        clock_gettime(CLOCK_REALTIME, &cnt_start); /*timestamp of handle 0-rtt reply back*/
+        if ((ret = ptls_handshake(client, &encbuf, NULL, NULL, client_hs_prop)) != PTLS_ERROR_IN_PROGRESS) {
+            fprintf(stderr, "ptls_handshake:%d\n", ret);
+            ret = 1;
+            goto Exit;
+        }
+        /* client send early data */
+        if (use_early_data) {
+            clock_gettime(CLOCK_REALTIME, &event_start);
+            ret = ptls_send(client, &encbuf, req, strlen(req));
+            assert(ret == 0);
+        }
     }
 
     while (1) {
@@ -177,8 +180,6 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                         /* release data sent as early-data, if server accepted it */
                         if (client_hs_prop->client.early_data_acceptance == PTLS_EARLY_DATA_ACCEPTED)
                             shift_buffer(&ptbuf, early_bytes_sent);
-                        if (request_key_update)
-                            ptls_update_key(client, 1);
                     } else if (ret == PTLS_ERROR_IN_PROGRESS) {
                         /* ok */
                     } else {
@@ -198,7 +199,7 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                             if (input_file != input_file_is_benchmark)
                                 repeat_while_eintr(write(1, rbuf.base, rbuf.off), { goto Exit; });
 
-                            /*check if it is early data reply*/
+                            /*check if it is first app data reply*/
                             if (memcmp(rbuf.base, resp, rbuf.off) == 0) {
                                 clock_gettime(CLOCK_REALTIME, &event_end); /*timestamp of handle 0-rtt reply back*/
                                 printf("\n\n-----------------Time measurement retults-----------------\n");
@@ -216,10 +217,10 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                                 /* send 'shutdown' message to server*/
                                 if (enable_bench_setting)
                                 {
-                                    if ((ret = ptls_buffer_reserve(&ptbuf, block_size)) != 0)
-                                        goto Exit;
-                                    memcpy(ptbuf.base, sd_signal, strlen(sd_signal));
-                                    ptbuf.off = strlen(sd_signal);
+//                                    if ((ret = ptls_buffer_reserve(&ptbuf, block_size)) != 0)
+//                                        goto Exit;
+//                                    memcpy(ptbuf.base, sd_signal, strlen(sd_signal));
+//                                    ptbuf.off = strlen(sd_signal);
                                     is_shutdown = 1;
                                 }
 
@@ -305,13 +306,32 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
             } else if (ioret <= 0) {
                 goto Exit;
             } else {
-                if (is_shutdown)
-                    goto Exit;
                 shift_buffer(&encbuf, ioret);
             }
         }
 
-        /* close the sender side when necessary */
+        /* close the client after getting the first application messge from server @xinshu*/
+        if (state == IN_1RTT && is_shutdown)
+        {
+            ptls_buffer_t wbuf;
+            uint8_t wbuf_small[32];
+            ptls_buffer_init(&wbuf, wbuf_small, sizeof(wbuf_small));
+            if ((ret = ptls_send_alert(client, &wbuf, PTLS_ALERT_LEVEL_WARNING, PTLS_ALERT_CLOSE_NOTIFY)) != 0) {
+                fprintf(stderr, "ptls_send_alert:%d\n", ret);
+            }
+            if (wbuf.off != 0)
+                repeat_while_eintr(write(sockfd, wbuf.base, wbuf.off), {
+                    ptls_buffer_dispose(&wbuf);
+                    goto Exit;
+                });
+            ptls_buffer_dispose(&wbuf);
+            shutdown(sockfd, SHUT_WR);
+            printf("[%s]: client sends shutdown tls signal\n", __func__);
+            state = IN_SHUTDOWN;
+        }
+
+
+        /* close the sender side after sending input_file contents */
         if (state == IN_1RTT && inputfd == -1) {
             if (!keep_sender_open) {
                 ptls_buffer_t wbuf;
@@ -327,6 +347,7 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                     });
                 ptls_buffer_dispose(&wbuf);
                 shutdown(sockfd, SHUT_WR);
+                printf("[%s]: client sends shutdown tls signal\n", __func__);
             }
             state = IN_SHUTDOWN;
         }
@@ -358,7 +379,7 @@ static void client_usage(const char *cmd) {
            "\n"
            "host:                IP address of server\n"
            "port:                port number of server\n"
-           "signature name:      dilithium3, dilithium2, dilithium5, rsa, ecdsa\n" // this decides which server cert to load
+           "test sig-name:       dilithium3, dilithium2, dilithium5, rsa, ecdsa\n" // this decides which server cert to load
            "Options:\n"
            "-p                   use post-quantum signature schemes\n"
            "-m                   require mutual authentication\n"
@@ -474,15 +495,16 @@ int main(int argc, char **argv) {
                           .key_exchanges = ptls_openssl_key_exchanges, /*ptls_openssl_key_exchanges by default*/
                           .cipher_suites = ptls_openssl_cipher_suites_all, /*ptls_openssl_cipher_suites_all by default*/
                           .certificates = {&cert, 1},
-                          .ech = {.client = {NULL}}, /* no ech */
+                          .ech = {.client = {NULL}, .server = {NULL}}, /* ech is disabled */
                           .sign_certificate = &openssl_sign_certificate.super,
                           .verify_certificate = &openssl_verify_certificate.super};
     ptls_handshake_properties_t client_hs_prop = {{{{NULL}}}};
 
     /* setup log*/
 
-    /* run client */
-    int ret;
+    /* run client TODO: set the arguments*/
+    double a, b;
+    return run_client(host, port, &ctx, &client_hs_prop, 0, 0, &a, &b);
 
 
 Exit:
