@@ -1950,7 +1950,7 @@ static int test_verify_cert_chain(X509_STORE *ustore, X509 *ucert, STACK_OF(X509
     const char *cert_file = "assets/dilithium3/dilithium3_srv.crt";
     if ((fp = fopen(cert_file, "r")) == NULL) {
         fprintf(stderr, "Failed to open certificate file: %s\n", cert_file);
-        goto Cleanup;
+        goto Exit;
     }
     X509 *cert = NULL;
     if ((cert = PEM_read_X509(fp, NULL, NULL, NULL)) == NULL) {
