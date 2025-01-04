@@ -8,6 +8,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
 #include <openssl/err.h>
+#include <openssl/pem.h>
 #include "oqs_util.h"
 
 int test_x509_store_ctx_init(const char *cert_file, const char *ca_file) {
