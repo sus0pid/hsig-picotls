@@ -1,6 +1,6 @@
 //
 // Created by xinshu on 04/01/25.
-gcc -o xxxxx xxxxx.c -I/usr/local/include -L/usr/local/lib64 -lssl -lcrypto -ldl
+// gcc -o xxxxx xxxxx.c -I/usr/local/include -L/usr/local/lib64 -lssl -lcrypto -ldl
 //
 #include <stdio.h>
 #include <stddef.h>
