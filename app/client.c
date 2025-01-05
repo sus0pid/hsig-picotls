@@ -126,6 +126,7 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
             ret = 1;
             goto Exit;
         }
+        printf(">> client sent ClientHello, line%d\n", __LINE__);
         /* client send early data */
         if (use_early_data) {
             clock_gettime(CLOCK_REALTIME, &event_start);
@@ -173,6 +174,8 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
             while ((leftlen = ioret - off) != 0) {
                 if (state == IN_HANDSHAKE) {
                     if ((ret = ptls_handshake(client, &encbuf, bytebuf + off, &leftlen, client_hs_prop)) == 0) {
+                        printf(">> client receive SeverHello, line%d\n", __LINE__);
+
                         state = IN_1RTT;
                         assert(ptls_is_server(client) || client_hs_prop->client.early_data_acceptance != PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN);
 //                        ech_save_retry_configs();
@@ -186,13 +189,16 @@ static int run_client(const char* host, const char *port, ptls_context_t *ctx,
                             assert(!ptls_is_server(client));
 //                            ech_save_retry_configs();
                         }
-                        if (encbuf.off != 0)
+                        if (encbuf.off != 0) {
                             repeat_while_eintr(write(sockfd, encbuf.base, encbuf.off), { break; });
-                        fprintf(stderr, "ptls_handshake:%d\n", ret);
+                            printf(">> client sent Finished, line%d\n", __LINE__);
+                        }
+                            fprintf(stderr, "ptls_handshake:%d\n", ret);
                         goto Exit;
                     }
                 } else {
                     if ((ret = ptls_receive(client, &rbuf, bytebuf + off, &leftlen)) == 0) {
+                        printf(">> client receive a app message, line%d\n", __LINE__);
                         if (rbuf.off != 0) {
                             data_received += rbuf.off;
                             if (input_file != input_file_is_benchmark)
