@@ -30,7 +30,6 @@
 #include "picotls/openssl.h"
 #include "utilities.h"
 
-const char *server_name = "test.example.com";
 unsigned use_early_data = 0;
 unsigned update_session_ticket = 0;
 unsigned use_dhe_on_psk = 0;
@@ -41,7 +40,7 @@ unsigned enable_bench_setting = 0;
 
 /* we test full handshake--tls-tcp */
 static int run_client(const char* host, const char *port, ptls_context_t *ctx,
-                          ptls_handshake_properties_t *client_hs_prop,
+                          ptls_handshake_properties_t *client_hs_prop, const char *server_name
                           int keep_sender_open, int message_size, double *cnt_time_cost, double *early_time_cost)
 {
     int inputfd = 0, ret = 0, is_shutdown = 0, num_msg_sent = 0;
@@ -470,13 +469,11 @@ int main(int argc, char **argv) {
         /* traditional signature algos */
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
-        sprintf(capath, "%s%s%s%s", certsdir, "ca", sep, "test-ca.crt");
     } else
     {
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
-        sprintf(capath, "%s%s%s%s", certsdir, "oqs-ca", sep, "dilithium3_CA.crt");
     }
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
@@ -488,8 +485,13 @@ int main(int argc, char **argv) {
         setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
     }
     /* setup ca cert file */
-//    ptls_openssl_init_verify_certificate(&openssl_verify_certificate, init_cert_store(capath));
     ptls_openssl_init_verify_certificate(&openssl_verify_certificate, NULL);
+
+    /* CN in certificate
+     * rsa: rsa.test.example.com
+     * ed25519: ed25519.test.example.com
+     * others: test.example.com*/
+    const char *server_name = (strcmp(sig_name, "rsa") == 0) ? "rsa.test.example.com" : "test.example.com";
 
     ptls_context_t ctx = {.random_bytes = ptls_openssl_random_bytes,
                           .get_time = &ptls_get_time,
@@ -507,7 +509,7 @@ int main(int argc, char **argv) {
 
     /* run client TODO: set the arguments*/
     double a, b;
-    return run_client(host, port, &ctx, &client_hs_prop, 0, 0, &a, &b);
+    return run_client(host, port, &ctx, &client_hs_prop, server_name, 0, 0, &a, &b);
 
 
 Exit:
