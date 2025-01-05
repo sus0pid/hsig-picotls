@@ -2111,6 +2111,7 @@ void ptls_openssl_dispose_verify_certificate(ptls_openssl_verify_certificate_t *
     X509_STORE_free(self->cert_store);
 }
 
+/* something went wrong here */
 X509_STORE *ptls_openssl_create_default_certificate_store(void)
 {
     X509_STORE *store;
@@ -2118,15 +2119,12 @@ X509_STORE *ptls_openssl_create_default_certificate_store(void)
 
     if ((store = X509_STORE_new()) == NULL)
         goto Error;
-    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
-        goto Error;
-    if (X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT) != 1) {
-        fprintf(stderr, "failed to load default certificate file\n");
-        goto Error;
-    }
-    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_hash_dir())) == NULL)
-        goto Error;
-    X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT);
+//    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
+//        goto Error;
+//    if (X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT) != 1) {
+//        fprintf(stderr, "failed to load default certificate file\n");
+//        goto Error;
+//    }
 
     /* load our default ca file for testing @xinshu*/
     if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
@@ -2136,6 +2134,10 @@ X509_STORE *ptls_openssl_create_default_certificate_store(void)
         fprintf(stderr, "failed to load ca/test-ca.crt file\n");
         goto Error;
     }
+
+    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_hash_dir())) == NULL)
+        goto Error;
+    X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT);
 
     return store;
 Error:
