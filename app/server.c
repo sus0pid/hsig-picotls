@@ -281,9 +281,8 @@ static void server_usage(const char *cmd) {
            "\n"
            "host:                IP address of server\n"
            "port:                port number of server\n"
-           "test sig-name:       dilithium3, dilithium2, dilithium5, rsa, ecdsa\n" // this decides which server cert to load
+           "load cert&key:       dilithium3, dilithium2, dilithium5, rsa, ecdsa\n" // this decides which server cert to load
            "Options:\n"
-           "-p                   load post-quantum certificates\n"
            "-m                   require mutual authentication\n"
            "-h                   print this help\n", cmd);
     printf("\n\n");
