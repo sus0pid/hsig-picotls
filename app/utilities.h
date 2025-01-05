@@ -22,11 +22,11 @@
 int family = AF_INET;
 
 enum Sig_schemes {
-    SIG_DILITHIUM2,
-    SIG_DILITHIUM3,
-    SIG_DILITHIUM5,
-    SIG_RSA,
-    SIG_ECDSA,
+    SIG_DILITHIUM2, //0
+    SIG_DILITHIUM3, //1
+    SIG_DILITHIUM5, //2
+    SIG_RSA,        //3
+    SIG_ECDSA,      //4
     SIG_SCHEMES_COUNT
 };
 

@@ -424,12 +424,8 @@ int main(int argc, char **argv) {
     }
 
     int ch, message_size, is_oqs_sig = 0, is_mutual_auth = 0;
-    while ((ch = getopt(argc, argv, "pmn:h")) != -1) {
+    while ((ch = getopt(argc, argv, "mn:h")) != -1) {
         switch (ch) {
-        case 'p':
-            is_oqs_sig = 1;
-            printf("setting: use post-quantum signature algorithm\n");
-            break;
         case 'm':
             is_mutual_auth = 1;
             printf("setting: mutual authentication mode\n");
@@ -464,13 +460,14 @@ int main(int argc, char **argv) {
     const char *sep = "/"; /*for most systems like linux, macos*/
     char *certsdir = "assets/";
 
-    if (!is_oqs_sig)
+    if (sig_index > 2)
     {
         /* traditional signature algos */
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
     } else
     {
+        is_oqs_sig = 1;
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");

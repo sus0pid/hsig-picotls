@@ -326,12 +326,8 @@ int main(int argc, char **argv) {
     }
 
     int ch, is_oqs_auth = 0, is_mutual_auth = 0;
-    while ((ch = getopt(argc, argv, "pmh")) != -1) {
+    while ((ch = getopt(argc, argv, "mh")) != -1) {
         switch (ch) {
-        case 'p':
-            is_oqs_auth = 1;
-            printf("setting: use post-quantum signature algorithm\n");
-            break;
         case 'm':
             is_mutual_auth = 1;
             printf("setting: mutual authentication mode\n");
@@ -363,21 +359,20 @@ int main(int argc, char **argv) {
     char *certsdir = "assets/";
 
     /* for simplicity, client and server share the same pair of cert&pkey */
-    if (!is_oqs_auth)
+    if (!sig_index > 2)
     {
         /* traditional signature algos */
         printf("is_oqs_auth = %d\n", is_oqs_auth);
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
-        sprintf(capath, "%s%s%s%s", certsdir, "ca", sep, "test-ca.crt");
     }
     else
     {
+        is_oqs_auth = 1;
         printf("is_oqs_auth = %d\n", is_oqs_auth);
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
-        sprintf(capath, "%s%s%s%s", certsdir, "oqs-ca", sep, "dilithium3_CA.crt");
     }
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
@@ -399,7 +394,7 @@ int main(int argc, char **argv) {
     if (is_mutual_auth)
     {
         ctx.require_client_authentication = 1;
-        /* setup ca cert file for client's certificate verification */
+        /* setup ca cert file for server certificate verification store */
         ptls_openssl_init_verify_certificate(&openssl_verify_certificate, NULL);
     }
 
