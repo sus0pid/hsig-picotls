@@ -2051,7 +2051,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
             }
             sk_X509_push(chain, interm);
         }
-        ret = test_verify_cert_chain(self->cert_store, cert, chain, ptls_is_server(tls), server_name, &ossl_x509_err);
+        ret = verify_cert_chain(self->cert_store, cert, chain, ptls_is_server(tls), server_name, &ossl_x509_err);
     } else {
         ret = PTLS_ALERT_CERTIFICATE_REQUIRED;
         ossl_x509_err = 0;
@@ -2072,6 +2072,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
         ret = PTLS_ALERT_BAD_CERTIFICATE;
         goto Exit;
     }
+    printf("[%s]: public key of the sender has been extracted, %d\n", __func__, __LINE__);
 
     /* todo: transfer is_oqs_cert when setting up certificate verify() */
     if (!is_oqs_sig)
