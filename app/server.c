@@ -358,7 +358,7 @@ int main(int argc, char **argv) {
     char *certsdir = "assets/";
 
     /* for simplicity, client and server share the same pair of cert&pkey */
-    if (!sig_index > 2)
+    if (sig_index > 2)
     {
         /* traditional signature algos */
         printf("is_oqs_auth = %d\n", is_oqs_auth);
