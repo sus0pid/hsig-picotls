@@ -3156,6 +3156,7 @@ static int default_emit_certificate_cb(ptls_emit_certificate_t *_self, ptls_t *t
                                                   ptls_iovec_init(NULL, 0))) != 0)
             goto Exit;
     });
+    printf("[%s]: send certificate with default certificate cb, line%d\n", __func__, __LINE__);
 
     ret = 0;
 Exit:

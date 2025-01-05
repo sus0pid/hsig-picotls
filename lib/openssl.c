@@ -2100,6 +2100,7 @@ int ptls_openssl_init_verify_certificate(ptls_openssl_verify_certificate_t *self
         /* use default store */
         if ((self->cert_store = ptls_openssl_create_default_certificate_store()) == NULL)
             return -1;
+        printf("[%s]: default store is set successfully, %d\n", __func__, __LINE__);
     }
 
     return 0;
@@ -2119,13 +2120,26 @@ X509_STORE *ptls_openssl_create_default_certificate_store(void)
         goto Error;
     if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
         goto Error;
-    X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT);
+    if (X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT) != 1) {
+        fprintf(stderr, "failed to load default certificate file\n");
+        goto Error;
+    }
     if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_hash_dir())) == NULL)
         goto Error;
     X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT);
 
+    /* load our default ca file for testing @xinshu*/
+    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
+        goto Error;
+    if (X509_LOOKUP_load_file(lookup, "assets/ca/test-ca.crt", X509_FILETYPE_PEM) != 1)
+    {
+        fprintf(stderr, "failed to load ca/test-ca.crt file\n");
+        goto Error;
+    }
+
     return store;
 Error:
+    printf("[%s]: default cert store created error, %d\n", __func__, __LINE__);
     if (store != NULL)
         X509_STORE_free(store);
     return NULL;
