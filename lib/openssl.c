@@ -1994,7 +1994,7 @@ void ptls_openssl_dispose_verify_certificate(ptls_openssl_verify_certificate_t *
     X509_STORE_free(self->cert_store);
 }
 
-/* something went wrong here */
+/* load our ca instead of system default ca file @xinshu*/
 X509_STORE *ptls_openssl_create_default_certificate_store(void)
 {
     X509_STORE *store;
