@@ -498,7 +498,9 @@ int main(int argc, char **argv) {
                           .certificates = {&cert, 1},
                           .ech = {.client = {NULL}, .server = {NULL}}, /* ech is disabled */
                           .sign_certificate = &openssl_sign_certificate.super,
-                          .verify_certificate = &openssl_verify_certificate.super};
+                          .verify_certificate = &openssl_verify_certificate.super,
+                          .require_oqssig_on_auth = is_oqs_sig /* oqs auth enabled */
+    };
     ptls_handshake_properties_t client_hs_prop = {{{{NULL}}}};
 
     /* setup log*/

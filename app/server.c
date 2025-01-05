@@ -400,7 +400,7 @@ int main(int argc, char **argv) {
     {
         ctx.require_client_authentication = 1;
         /* setup ca cert file for client's certificate verification */
-        ptls_openssl_init_verify_certificate(&openssl_verify_certificate, init_cert_store(capath));
+        ptls_openssl_init_verify_certificate(&openssl_verify_certificate, NULL);
     }
 
     /* todo: setup log @xinshu*/
