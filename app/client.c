@@ -40,7 +40,7 @@ unsigned enable_bench_setting = 0;
 
 /* we test full handshake--tls-tcp */
 static int run_client(const char* host, const char *port, ptls_context_t *ctx,
-                          ptls_handshake_properties_t *client_hs_prop, const char *server_name
+                          ptls_handshake_properties_t *client_hs_prop, const char *server_name,
                           int keep_sender_open, int message_size, double *cnt_time_cost, double *early_time_cost)
 {
     int inputfd = 0, ret = 0, is_shutdown = 0, num_msg_sent = 0;
