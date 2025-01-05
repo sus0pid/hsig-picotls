@@ -376,12 +376,10 @@ Exit:
 static void client_usage(const char *cmd) {
     printf("Client Usage: %s [options] host port protocol\n"
            "\n"
-           "host:                IP address of server\n"
-           "port:                port number of server\n"
-           "test sig-name:       dilithium3, dilithium2, dilithium5, rsa, ecdsa\n" // this decides which server cert to load
+           "dst host:                IP address of server\n"
+           "dst port:                port number of server\n"
+           "load cert&key:           dilithium3, dilithium2, dilithium5, rsa, ecdsa\n" // this decides which server cert to load
            "Options:\n"
-           "-p                   use post-quantum signature schemes\n"
-           "-m                   require mutual authentication\n"
            "-n size              message size (Bytes) of the first app data\n"
            "-h                   print this help\n", cmd);
     printf("\n\n");
@@ -423,13 +421,9 @@ int main(int argc, char **argv) {
         goto Exit;
     }
 
-    int ch, message_size, is_oqs_sig = 0, is_mutual_auth = 0;
-    while ((ch = getopt(argc, argv, "mn:h")) != -1) {
+    int ch, message_size, is_oqs_sig = 0;
+    while ((ch = getopt(argc, argv, "n:h")) != -1) {
         switch (ch) {
-        case 'm':
-            is_mutual_auth = 1;
-            printf("setting: mutual authentication mode\n");
-            break;
         case 'n':
             message_size = atoi(optarg);
             printf("setting: message_size: %d bytes\n", message_size);
@@ -476,11 +470,9 @@ int main(int argc, char **argv) {
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
     ptls_iovec_t cert;
 
-    if (is_mutual_auth)
-    {
-        setup_certificate(&cert, certpath);
-        setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
-    }
+    setup_certificate(&cert, certpath);
+    setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
+
     /* setup ca cert file */
     ptls_openssl_init_verify_certificate(&openssl_verify_certificate, NULL);
 
