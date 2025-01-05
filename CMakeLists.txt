@@ -155,6 +155,7 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     ADD_EXECUTABLE(hsig-server app/server.c)
     TARGET_LINK_LIBRARIES(hsig-server picotls-openssl picotls-core)
     ADD_EXECUTABLE(test-picotls-api app/test_picotls_api.c)
+    set_property(TARGET test-picotls-api PROPERTY COMPILE_FLAGS "-g")
     TARGET_LINK_LIBRARIES(test-picotls-api picotls-openssl picotls-core)
 
 
