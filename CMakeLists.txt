@@ -29,7 +29,8 @@ ENDIF ()
 OPTION(WITH_AEGIS "enable AEGIS (requires libaegis)" ${WITH_AEGIS})
 OPTION(WITH_MBEDTLS "enable MBEDTLS" ${WITH_MBEDTLS})
 
-SET(CMAKE_C_FLAGS "-std=c99 -Wall -O2 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
+SET(CMAKE_C_FLAGS "-std=c99 -Wall -O0 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
+
 INCLUDE_DIRECTORIES(
     deps/cifra/src/ext
     deps/cifra/src
@@ -155,7 +156,6 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     ADD_EXECUTABLE(hsig-server app/server.c)
     TARGET_LINK_LIBRARIES(hsig-server picotls-openssl picotls-core)
     ADD_EXECUTABLE(test-picotls-api app/test_picotls_api.c)
-    set_property(TARGET test-picotls-api PROPERTY COMPILE_FLAGS "-g")
     TARGET_LINK_LIBRARIES(test-picotls-api picotls-openssl picotls-core)
 
 
