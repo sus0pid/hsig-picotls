@@ -68,6 +68,7 @@ static void test_handshake_api(void)
         /* Test1: full handshake */
         /* C1. client gen CHLO*/
         printf("\n\n-------------------------------Test0: full handshake--------------------\n");
+        ptls_set_server_name(client, "test.example.com", 0);
         ret = ptls_handle_message(client, &cbuf, coffs, 0, NULL, 0, NULL);
         if (!disable_debug) {
             printf(">>Client send CHLO.\n");
