@@ -257,7 +257,7 @@ static void setup_sign_certificate(ptls_openssl_sign_certificate_t *sc) {
     if (pkey == NULL) {
         fprintf(stderr, "Failed to load private key from file at %s\n", ECDSA_PKEY_PATH);
     }
-    ptls_openssl_init_sign_certificate(sc, pkey);
+    ptls_openssl_init_trad_sign_certificate(sc, pkey);
     EVP_PKEY_free(pkey);
 }
 
