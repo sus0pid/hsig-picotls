@@ -2126,12 +2126,21 @@ X509_STORE *ptls_openssl_create_default_certificate_store(void)
 //        goto Error;
 //    }
 
-    /* load our default ca file for testing @xinshu*/
+    /* load our default trad ca file for testing @xinshu*/
     if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
         goto Error;
     if (X509_LOOKUP_load_file(lookup, "assets/ca/test-ca.crt", X509_FILETYPE_PEM) != 1)
     {
         fprintf(stderr, "failed to load ca/test-ca.crt file\n");
+        goto Error;
+    }
+
+    /* load our default oqs ca file for testing @xinshu*/
+    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
+        goto Error;
+    if (X509_LOOKUP_load_file(lookup, "assets/oqs-ca/dilithium3_CA.crt", X509_FILETYPE_PEM) != 1)
+    {
+        fprintf(stderr, "failed to load oqs-ca/dilithium3_CA.crt file\n");
         goto Error;
     }
 
