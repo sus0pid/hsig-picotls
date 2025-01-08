@@ -190,7 +190,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
         EVP_PKEY_CTX_free(pctx);
     }
     else if (strncmp(sig_name, "dilithium", 3) == 0) {
-        is_oqs_sig = 0;
+        is_oqs_sig = 1;
         EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, sig_name, NULL);
         if (pctx == NULL || EVP_PKEY_keygen_init(pctx) <= 0) {
             fprintf(stderr, "Failed to initialize Dilithium keygen context.\n");
