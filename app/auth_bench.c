@@ -52,15 +52,17 @@ static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *s
     *t_sign = 0;
     *t_verify = 0;
 
-    ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
-
     for (size_t k = 0; k < n;) {
         size_t i_max = ((n - k) > BENCH_BATCH) ? BENCH_BATCH : (n - k);
         uint64_t t_start = bench_time();
         uint64_t t_medium, t_end;
-
+        ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
         /* Benchmark signing in batch */
         for (size_t i = 0; i < i_max; i++) {
+            if (i) {
+                ptls_buffer_dispose(&sigbuf);
+                ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
+            }
             if (!is_oqs_sig)
                 ret = do_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
             else
@@ -228,7 +230,7 @@ static auth_bench_entry_t sig_list[] =
         {"default", "rsa", rsa_signature_schemes, 1},
         {"default", "ecdsa", secp256r1_signature_schemes, 1},
 #if PTLS_OPENSSL_HAVE_ED25519
-        {"default", "ed25519", ed25519_signature_schemes, 0},
+        {"default", "ed25519", ed25519_signature_schemes, 1},
 #endif
         {"oqsprovider", "dilithium2", dilithium2_signature_schemes, 1},
         {"oqsprovider", "dilithium3", dilithium3_signature_schemes, 1},
