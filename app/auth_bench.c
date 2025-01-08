@@ -39,7 +39,8 @@ static uint64_t bench_time()
 
 /* Single measurement.
  * for each schemes, we only bench schemes[0], refer to rsa_signature_schemes[] in lib/openssl.c */
-static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes, size_t n, uint64_t *t_sign, uint64_t *t_verify)
+static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes, size_t n,
+                         uint64_t *t_sign, uint64_t *t_verify, int is_oqs_sig)
 {
     int ret = 0;
     printf("benchmark scheme: 0x%04x", schemes[0].scheme_id);
@@ -60,7 +61,10 @@ static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *s
 
         /* Benchmark signing in batch */
         for (size_t i = 0; i < i_max; i++) {
-            ret = do_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
+            if (!is_oqs_sig)
+                ret = do_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
+            else
+                ret = do_oqs_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
             if (ret != 0) {
                 fprintf(stderr, "do_sign failed at iteration %zu\n", k + i);
                 goto Cleanup;
@@ -72,8 +76,12 @@ static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *s
         /* Benchmark verification in batch */
         for (size_t i = 0; i < i_max; i++) {
             EVP_PKEY_up_ref(key);
-            ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
+            if (!is_oqs_sig)
+                ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
                               ptls_iovec_init(sigbuf.base, sigbuf.off));
+            else
+                ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
+                                  ptls_iovec_init(sigbuf.base, sigbuf.off));
             if (ret != 0) {
                 fprintf(stderr, "verify_sign failed at iteration %zu\n", k + i);
                 goto Cleanup;
@@ -102,6 +110,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     uint64_t t_sign = 0;
     uint64_t t_verify = 0;
     char p_version[128];
+    int is_oqs_sig = 0;
 
     /* Document library version as it may have impact on performance */
     p_version[0] = 0;
@@ -181,6 +190,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
         EVP_PKEY_CTX_free(pctx);
     }
     else if (strncmp(sig_name, "dilithium", 3) == 0) {
+        is_oqs_sig = 0;
         EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, sig_name, NULL);
         if (pctx == NULL || EVP_PKEY_keygen_init(pctx) <= 0) {
             fprintf(stderr, "Failed to initialize Dilithium keygen context.\n");
@@ -195,7 +205,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     if (pkey == NULL || schemes == NULL) {
         ret = PTLS_ERROR_NO_MEMORY;
     } else {
-        ret = bench_run_one(pkey, schemes, n, &t_sign, &t_verify);
+        ret = bench_run_one(pkey, schemes, n, &t_sign, &t_verify, is_oqs_sig);
         if (ret == 0) {
             printf("%s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                    basic_ref, provider, p_version, sig_name, (int)n, (int)t_sign, (int)t_verify,
@@ -217,12 +227,12 @@ static auth_bench_entry_t sig_list[] =
 {
         {"default", "rsa", rsa_signature_schemes, 1},
         {"default", "ecdsa", secp256r1_signature_schemes, 1},
-//#if PTLS_OPENSSL_HAVE_ED25519
-//        {"default", "ed25519", ed25519_signature_schemes, 0},
-//#endif
-//        {"oqsprovider", "dilithium2", dilithium2_signature_schemes, 1},
-//        {"oqsprovider", "dilithium3", dilithium3_signature_schemes, 1},
-//        {"oqsprovider", "dilithium5", dilithium5_signature_schemes, 1},
+#if PTLS_OPENSSL_HAVE_ED25519
+        {"default", "ed25519", ed25519_signature_schemes, 0},
+#endif
+        {"oqsprovider", "dilithium2", dilithium2_signature_schemes, 1},
+        {"oqsprovider", "dilithium3", dilithium3_signature_schemes, 1},
+        {"oqsprovider", "dilithium5", dilithium5_signature_schemes, 1},
 };
 
 static size_t nb_sig_list = sizeof(sig_list) / sizeof(auth_bench_entry_t);
