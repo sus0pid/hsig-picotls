@@ -197,7 +197,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     } else {
         ret = bench_run_one(pkey, schemes, n, &t_sign, &t_verify);
         if (ret == 0) {
-            printf("%s, %s, %d, %s, %d, %s, %s, %s, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+            printf("%s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                    basic_ref, provider, p_version, sig_name, (int)n, (int)t_sign, (int)t_verify,
                    (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
         }
@@ -288,7 +288,7 @@ int main(int argc, char **argv)
 
     for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
         if (sig_list[i].enabled_by_default || force_all_tests) {
-            ret = bench_sign_verify(OS, HW, basic_ref, x, sig_list[i].provider, sig_list[i].sig_name,
+            ret = bench_sign_verify(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name,
                                     sig_list[i].schemes, 100000);
         }
     }
