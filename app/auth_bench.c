@@ -211,8 +211,8 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, uint64_t s0, con
 typedef struct st_auth_bench_entry_t {
     const char *provider;
     const char *sig_name;
-    const ptls_openssl_signature_scheme_t *schemes
-    int enabled_by_defaut;
+    const ptls_openssl_signature_scheme_t *schemes;
+    int enabled_by_default;
 } auth_bench_entry_t;
 
 static auth_bench_entry_t sig_list[] =
@@ -263,6 +263,7 @@ int main(int argc, char **argv)
     int force_all_tests = 0;
     uint64_t x = 0xdeadbeef;
     uint64_t s = 0;
+    struct utsname uts;
     int basic_ref = bench_basic(&x);
     char OS[128];
     char HW[128];
