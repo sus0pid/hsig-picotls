@@ -95,7 +95,7 @@ Cleanup:
 
 
 /* Measure one sign and verify implementation */
-static int bench_sign_verify(char *OS, char *HW, int basic_ref, uint64_t s0, const char *provider, const char *sig_name,
+static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *provider, const char *sig_name,
                              ptls_openssl_signature_scheme_t *schemes, size_t n)
 {
     int ret = 0;
@@ -119,8 +119,6 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, uint64_t s0, con
         char letter = 'a' - 1 + PP;
         (void)sprintf(p_version, "%d.%d.%d%c", M, NN, FF, letter);
     }
-
-    *s += s0;
 
     /* create pkey
      * rsa2048, ecdsa256(secp256r1)
@@ -262,7 +260,6 @@ int main(int argc, char **argv)
     int ret = 0;
     int force_all_tests = 0;
     uint64_t x = 0xdeadbeef;
-    uint64_t s = 0;
     struct utsname uts;
     int basic_ref = bench_basic(&x);
     char OS[128];
