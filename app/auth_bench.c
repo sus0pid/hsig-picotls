@@ -151,7 +151,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, uint64_t s0, con
     }
     else if (strcmp(sig_name, "ecdsa") == 0) {
         EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
-        if (ctx == NULL || EVP_PKEY_keygen_init(pctx) <= 0) {
+        if (pctx == NULL || EVP_PKEY_keygen_init(pctx) <= 0) {
             fprintf(stderr, "Failed to initialize ECDSA key generation context\n");
             EVP_PKEY_CTX_free(pctx);
             exit(1);
@@ -199,7 +199,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, uint64_t s0, con
     } else {
         ret = bench_run_one(pkey, schemes, n, &t_sign, &t_verify);
         if (ret == 0) {
-            printf("%s, %s, %d, %s, %d, %s, %s, %s, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)), BENCH_MODE,
+            printf("%s, %s, %d, %s, %d, %s, %s, %s, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                    basic_ref, provider, p_version, sig_name, (int)n, (int)t_sign, (int)t_verify,
                    (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
         }
@@ -287,7 +287,7 @@ int main(int argc, char **argv)
     }
 
     printf(
-        "OS, HW, bits, mode, 10M ops, provider, version, algorithm, N, sign us, verify us, sign opps, verify opbps,\n");
+        "OS, HW, bits, 10M ops, provider, version, algorithm, N, sign us, verify us, sign opps, verify opbps,\n");
 
     for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
         if (sig_list[i].enabled_by_default || force_all_tests) {
