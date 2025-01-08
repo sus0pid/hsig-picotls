@@ -117,20 +117,18 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     /* Document library version as it may have impact on performance */
     p_version[0] = 0;
 
-    if (strcmp(provider, "default") == 0) {
-        /*
-         * OPENSSL_VERSION_NUMBER is a combination of the major, minor and patch version
-         * into a single integer 0xMNNFFPP0L, where M is major, NN is minor, PP is patch
-         */
-        uint32_t combined = OPENSSL_VERSION_NUMBER;
-        int M = combined >> 28;
-        int NN = (combined >> 20) & 0xFF;
-        int FF = (combined >> 12) & 0xFF;
-        int PP = (combined >> 4) & 0xFF;
-        char letter = 'a' - 1 + PP;
-        (void)sprintf(p_version, "%d.%d.%d%c", M, NN, FF, letter);
-    }
-
+    /*
+     * OPENSSL_VERSION_NUMBER is a combination of the major, minor and patch version
+     * into a single integer 0xMNNFFPP0L, where M is major, NN is minor, PP is patch
+     */
+    uint32_t combined = OPENSSL_VERSION_NUMBER;
+    int M = combined >> 28;
+    int NN = (combined >> 20) & 0xFF;
+    int FF = (combined >> 12) & 0xFF;
+    int PP = (combined >> 4) & 0xFF;
+    char letter = 'a' - 1 + PP;
+    (void)sprintf(p_version, "%d.%d.%d%c", M, NN, FF, letter);
+    
     /* create pkey
      * rsa2048, ecdsa256(secp256r1)
      * rsa3072, ecdsa384(secp384r1)*/
