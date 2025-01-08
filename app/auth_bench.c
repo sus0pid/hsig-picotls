@@ -208,7 +208,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
         ret = bench_run_one(pkey, schemes, n, &t_sign, &t_verify, is_oqs_sig);
         if (ret == 0) {
             printf("%s, %s, %d, %d, %s, %s, %s, %d, %0.2f, %.2f, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
-                   basic_ref, provider, p_version, sig_name, (int)n, t_sign/n, t_verify/n,
+                   basic_ref, provider, p_version, sig_name, (int)n, (double)t_sign, (double)t_verify,
                    (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
         }
     }
