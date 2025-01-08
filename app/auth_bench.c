@@ -128,7 +128,7 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     int PP = (combined >> 4) & 0xFF;
     char letter = 'a' - 1 + PP;
     (void)sprintf(p_version, "%d.%d.%d%c", M, NN, FF, letter);
-    
+
     /* create pkey
      * rsa2048, ecdsa256(secp256r1)
      * rsa3072, ecdsa384(secp384r1)*/
@@ -207,8 +207,8 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     } else {
         ret = bench_run_one(pkey, schemes, n, &t_sign, &t_verify, is_oqs_sig);
         if (ret == 0) {
-            printf("%s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
-                   basic_ref, provider, p_version, sig_name, (int)n, (int)t_sign, (int)t_verify,
+            printf("%s, %s, %d, %d, %s, %s, %s, %d, %0.2f, %.2f, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+                   basic_ref, provider, p_version, sig_name, (int)n, t_sign/n, t_verify/n,
                    (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
         }
     }
