@@ -96,7 +96,7 @@ Cleanup:
 
 /* Measure one sign and verify implementation */
 static int bench_sign_verify(char *OS, char *HW, int basic_ref, uint64_t s0, const char *provider, const char *sig_name,
-                             ptls_openssl_signature_scheme_t *schemes, size_t n, uint64_t *s)
+                             ptls_openssl_signature_scheme_t *schemes, size_t n)
 {
     int ret = 0;
     uint64_t t_sign = 0;
