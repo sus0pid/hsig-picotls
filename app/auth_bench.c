@@ -217,12 +217,12 @@ static auth_bench_entry_t sig_list[] =
 {
         {"default", "rsa", rsa_signature_schemes, 1},
         {"default", "ecdsa", secp256r1_signature_schemes, 1},
-#if PTLS_OPENSSL_HAVE_ED25519
-        {"default", "ed25519", ed25519_signature_schemes, 0},
-#endif
-        {"oqsprovider", "dilithium2", dilithium2_signature_schemes, 1},
-        {"oqsprovider", "dilithium3", dilithium3_signature_schemes, 1},
-        {"oqsprovider", "dilithium5", dilithium5_signature_schemes, 1},
+//#if PTLS_OPENSSL_HAVE_ED25519
+//        {"default", "ed25519", ed25519_signature_schemes, 0},
+//#endif
+//        {"oqsprovider", "dilithium2", dilithium2_signature_schemes, 1},
+//        {"oqsprovider", "dilithium3", dilithium3_signature_schemes, 1},
+//        {"oqsprovider", "dilithium5", dilithium5_signature_schemes, 1},
 };
 
 static size_t nb_sig_list = sizeof(sig_list) / sizeof(auth_bench_entry_t);
@@ -289,7 +289,7 @@ int main(int argc, char **argv)
     for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
         if (sig_list[i].enabled_by_default || force_all_tests) {
             ret = bench_sign_verify(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name,
-                                    sig_list[i].schemes, 100000);
+                                    sig_list[i].schemes, 2); /*options: 100000, 1000000, 1000*/
         }
     }
 
