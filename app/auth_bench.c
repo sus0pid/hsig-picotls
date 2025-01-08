@@ -289,7 +289,7 @@ int main(int argc, char **argv)
     for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
         if (sig_list[i].enabled_by_default || force_all_tests) {
             ret = bench_sign_verify(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name,
-                                    sig_list[i].schemes, 2); /*options: 100000, 1000000, 1000*/
+                                    sig_list[i].schemes, 1); /*options: 100000, 1000000, 1000*/
         }
     }
 
