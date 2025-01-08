@@ -42,7 +42,7 @@ static uint64_t bench_time()
 static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes, size_t n, uint64_t *t_sign, uint64_t *t_verify)
 {
     int ret = 0;
-    note("scheme 0x%04x", schemes[0].scheme_id);
+    printf("benchmark scheme: 0x%04x", schemes[0].scheme_id);
     const void *message = "hello world";
     size_t message_len = strlen(message);
     ptls_buffer_t sigbuf;
