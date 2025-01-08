@@ -80,7 +80,7 @@ static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *s
                 ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
                               ptls_iovec_init(sigbuf.base, sigbuf.off));
             else
-                ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
+                ret = verify_oqs_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
                                   ptls_iovec_init(sigbuf.base, sigbuf.off));
             if (ret != 0) {
                 fprintf(stderr, "verify_sign failed at iteration %zu\n", k + i);
