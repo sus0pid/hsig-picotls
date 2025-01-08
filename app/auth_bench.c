@@ -14,6 +14,7 @@
 #include "picotls.h"
 #include "picotls/openssl.h"
 #include "../lib/openssl.c"
+#include "oqs_util.h"
 
 
 /* Time in microseconds */
@@ -203,7 +204,8 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, uint64_t s0, con
                    (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
         }
     }
-
+    EVP_PKEY_free(pkey);
+    return ret;
 }
 
 typedef struct st_auth_bench_entry_t {
@@ -249,6 +251,14 @@ static int bench_basic(uint64_t *x)
 
 int main(int argc, char **argv)
 {
+    // Create a new OpenSSL library context
+    OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
+    T(libctx != NULL);
+    // Load default provider
+    OSSL_PROVIDER *default_provider = load_default_provider(libctx);
+    // Load OQS provider
+    OSSL_PROVIDER *oqs_provider = load_oqs_provider(libctx);
+
     int ret = 0;
     int force_all_tests = 0;
     uint64_t x = 0xdeadbeef;
@@ -284,5 +294,11 @@ int main(int argc, char **argv)
                                     sig_list[i].schemes, 100000);
         }
     }
+
+    // Unload providers and free library context
+    OSSL_PROVIDER_unload(default_provider);
+    OSSL_PROVIDER_unload(oqs_provider);
+    OSSL_LIB_CTX_free(libctx);
+
     return ret;
 }
