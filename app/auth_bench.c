@@ -39,6 +39,75 @@ static uint64_t bench_time()
 
 /* Single measurement.
  * for each schemes, we only bench schemes[0], refer to rsa_signature_schemes[] in lib/openssl.c */
+static int bench_run_one_certvrf(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes, size_t n,
+                         uint64_t *t_sign, uint64_t *t_verify, int is_oqs_sig)
+{
+    int ret = 0;
+    //    printf("benchmark scheme: 0x%04x", schemes[0].scheme_id);
+    const void *message = "hello world";
+    size_t message_len = strlen(message);
+    ptls_buffer_t sigbuf;
+    uint8_t sigbuf_small[1024];
+
+    *t_sign = 0;
+    *t_verify = 0;
+
+    for (size_t k = 0; k < n;) {
+        size_t i_max = ((n - k) > BENCH_BATCH) ? BENCH_BATCH : (n - k);
+        uint64_t t_start = bench_time();
+        uint64_t t_medium, t_end;
+        ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
+        /* Benchmark signing in batch */
+        for (size_t i = 0; i < i_max; i++) {
+            if (i) {
+                ptls_buffer_dispose(&sigbuf);
+                ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
+            }
+            if (!is_oqs_sig)
+                ret = do_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
+            else
+                ret = do_oqs_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
+            if (ret != 0) {
+                fprintf(stderr, "do_sign failed at iteration %zu\n", k + i);
+                goto Cleanup;
+            }
+        }
+
+        t_medium = bench_time();
+
+        /* Benchmark verification in batch */
+        for (size_t i = 0; i < i_max; i++) {
+            EVP_PKEY_up_ref(key);
+            if (!is_oqs_sig)
+                ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
+                                  ptls_iovec_init(sigbuf.base, sigbuf.off));
+            else
+                ret = verify_oqs_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
+                                      ptls_iovec_init(sigbuf.base, sigbuf.off));
+            if (ret != 0) {
+                fprintf(stderr, "verify_sign failed at iteration %zu\n", k + i);
+                goto Cleanup;
+            }
+        }
+
+        t_end = bench_time();
+
+        *t_sign += t_medium - t_start;
+        *t_verify += t_end - t_medium;
+
+        k += i_max;
+    }
+
+Cleanup:
+    ptls_buffer_dispose(&sigbuf);
+    return ret;
+}
+
+
+
+
+/* Single measurement.
+ * for each schemes, we only bench schemes[0], refer to rsa_signature_schemes[] in lib/openssl.c */
 static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes, size_t n,
                          uint64_t *t_sign, uint64_t *t_verify, int is_oqs_sig)
 {
@@ -207,9 +276,15 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     } else {
         ret = bench_run_one(pkey, schemes, n, &t_sign, &t_verify, is_oqs_sig);
         if (ret == 0) {
-            printf("%s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
-                   basic_ref, provider, p_version, sig_name, (int)n, (int)t_sign, (int)t_verify,
-                   (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
+            double avg_t_sign = (double)t_sign / n;  // Average time per signing (in microseconds)
+            double avg_t_verify = (double)t_verify / n;  // Average time per verification (in microseconds)
+
+            printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+                   basic_ref, provider, p_version, sig_name, (int)n, avg_t_sign, avg_t_verify,
+                   1000000.0 / avg_t_sign, 1000000.0 / avg_t_verify);
+//            printf("%s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+//                   basic_ref, provider, p_version, sig_name, (int)n, (int)t_sign, (int)t_verify,
+//                   (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
         }
     }
     EVP_PKEY_free(pkey);
