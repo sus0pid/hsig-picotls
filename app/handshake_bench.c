@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "picotls.h"
+#include "utilities.h"
 
 ptls_context_t *ctx, *ctx_peer;
 
@@ -299,18 +300,53 @@ static void ben_run_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, 
         ctx_peer->require_client_authentication = 0;
 }
 
-int main(int argc, char **argv)
+static int bench_handshake()
 {
-    if ((argc == 1) || (argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0))) {
-        usage(argv[0]);
-        return 0;
-    }
+    char certpath[300];
+    char privkeypath[300];
+    char capath[300];
+    const char *sep = "/"; /*for most systems like linux, macos*/
+    char *certsdir = "assets/";
 
+    if (sig_index > 2)
+    {
+        /* traditional signature algos */
+        sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
+        sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
+    } else
+    {
+        is_oqs_sig = 1;
+        /* post quantum signature algos */
+        sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
+        sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
+    }
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
-    ptls_ech_create_opener_t ech_create_opener = {.cb = create_ech_opener};
-    ptls_key_exchange_algorithm_t *ptls_25519_key_excanges[] = {&ptls_openssl_x25519, NULL};
+    ptls_iovec_t cert;
 
+    setup_certificate(&cert, certpath);
+    setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
+
+    /* setup ca cert file */
+    ptls_openssl_init_verify_certificate(&openssl_verify_certificate, NULL);
+
+    const char *server_name = (strcmp(sig_name, "rsa") == 0) ? "rsa.test.example.com" : "test.example.com";
+
+    ptls_context_t ctx = {.random_bytes = ptls_openssl_random_bytes,
+        .get_time = &ptls_get_time,
+        .key_exchanges = ptls_openssl_key_exchanges, /*ptls_openssl_key_exchanges by default*/
+        .cipher_suites = ptls_openssl_cipher_suites_all, /*ptls_openssl_cipher_suites_all by default*/
+        .certificates = {&cert, 1},
+        .ech = {.client = {NULL}, .server = {NULL}}, /* ech is disabled */
+        .sign_certificate = &openssl_sign_certificate.super,
+        .verify_certificate = &openssl_verify_certificate.super,
+        .require_oqssig_on_auth = is_oqs_sig /* oqs auth enabled */
+    };
+    ptls_handshake_properties_t client_hs_prop = {{{{NULL}}}};
+}
+
+int main(int argc, char **argv)
+{
     ERR_load_crypto_strings();
     OpenSSL_add_all_algorithms();
 
@@ -325,43 +361,14 @@ int main(int argc, char **argv)
     ENGINE_register_all_digests();
 #endif
 
-    ptls_iovec_t cert;
-    setup_certificate(&cert);
-    setup_sign_certificate(&openssl_sign_certificate);
-    X509_STORE *cert_store = X509_STORE_new();
-    X509_LOOKUP *lookup = X509_STORE_add_lookup(cert_store, X509_LOOKUP_file());
-    int ret = X509_LOOKUP_load_file(lookup, "assets/ca/test-ca.crt", X509_FILETYPE_PEM);
-    if (ret != 1) {
-        fprintf(stderr, "Failed to load trad CA certificates\n");
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
-    X509_STORE_set_verify_cb(cert_store, verify_cert_cb);
-    ptls_openssl_init_verify_certificate(&openssl_verify_certificate, cert_store);
-    /* we should call X509_STORE_free on OpenSSL 1.1 or in prior versions decrement refount then call _free */
-    ptls_context_t openssl_ctx = {.random_bytes = ptls_openssl_random_bytes,
-                                  .get_time = &ptls_get_time,
-                                  .key_exchanges = ptls_openssl_key_exchanges,
-                                  //                                  .key_exchanges = ptls_25519_key_excanges,
-                                  .cipher_suites = ptls_openssl_cipher_suites_all,
-                                  .tls12_cipher_suites = ptls_openssl_tls12_cipher_suites,
-                                  .certificates = {&cert, 1},
-                                  .ech = {.client = {NULL}},
-                                  .sign_certificate = &openssl_sign_certificate.super};
-    ptls_context_t openssl_ctx_sha256only = openssl_ctx;
-    while (openssl_ctx_sha256only.cipher_suites[0]->hash->digest_size != 32) {
-        assert(openssl_ctx.cipher_suites[0]->hash->digest_size == 64 || /* sha512 */
-               openssl_ctx.cipher_suites[0]->hash->digest_size == 48);  /* sha384 */
-        ++openssl_ctx_sha256only.cipher_suites;
-    }
-    assert(openssl_ctx_sha256only.cipher_suites[0]->hash->digest_size == 32); /* sha256 */
-
-    ctx = ctx_peer = &openssl_ctx;
-    verify_certificate = &openssl_verify_certificate.super;
-
-    /*first run without ECH*/
-    ctx_peer->ech.server.create_opener = NULL;
-    ctx->ech.client.ciphers = NULL;
 
 
+
+
+
+#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+    OSSL_PROVIDER_unload(dflt);
+    OSSL_PROVIDER_unload(oqsprovider);
+#endif
+    return 0;
 }
