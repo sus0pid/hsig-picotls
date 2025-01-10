@@ -5,106 +5,19 @@
 #include <string.h>
 #include <stdio.h>
 #include <arpa/inet.h>
-#include <sys/time.h>
 #include <sys/utsname.h>
-#include <time.h>
-#include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/provider.h>
 #include "picotls.h"
 #include "picotls/openssl.h"
 #include "../lib/openssl.c"
 #include "oqs_util.h"
-
-
-/* Time in microseconds */
-static uint64_t bench_time()
-{
-    struct timeval tv;
-#ifdef CLOCK_PROCESS_CPUTIME_ID
-    struct timespec cpu;
-    if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu) == 0) {
-        uint64_t nanos = (uint64_t)cpu.tv_nsec;
-        uint64_t micros = nanos / 1000;
-        micros += (1000000ull) * ((uint64_t)cpu.tv_sec);
-        return micros;
-    }
-#endif
-    gettimeofday(&tv, NULL);
-    return (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
-}
+#include "bench_common.h"
 
 #define BENCH_BATCH 64
 
-
-/* Single measurement.
- * for each schemes, we only bench schemes[0], refer to rsa_signature_schemes[] in lib/openssl.c */
-static int bench_run_one_certvrf(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *schemes, size_t n,
-                         uint64_t *t_sign, uint64_t *t_verify, int is_oqs_sig)
-{
-    int ret = 0;
-    //    printf("benchmark scheme: 0x%04x", schemes[0].scheme_id);
-    const void *message = "hello world";
-    size_t message_len = strlen(message);
-    ptls_buffer_t sigbuf;
-    uint8_t sigbuf_small[1024];
-
-    *t_sign = 0;
-    *t_verify = 0;
-
-    for (size_t k = 0; k < n;) {
-        size_t i_max = ((n - k) > BENCH_BATCH) ? BENCH_BATCH : (n - k);
-        uint64_t t_start = bench_time();
-        uint64_t t_medium, t_end;
-        ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
-        /* Benchmark signing in batch */
-        for (size_t i = 0; i < i_max; i++) {
-            if (i) {
-                ptls_buffer_dispose(&sigbuf);
-                ptls_buffer_init(&sigbuf, sigbuf_small, sizeof(sigbuf_small));
-            }
-            if (!is_oqs_sig)
-                ret = do_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
-            else
-                ret = do_oqs_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
-            if (ret != 0) {
-                fprintf(stderr, "do_sign failed at iteration %zu\n", k + i);
-                goto Cleanup;
-            }
-        }
-
-        t_medium = bench_time();
-
-        /* Benchmark verification in batch */
-        for (size_t i = 0; i < i_max; i++) {
-            EVP_PKEY_up_ref(key);
-            if (!is_oqs_sig)
-                ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
-                                  ptls_iovec_init(sigbuf.base, sigbuf.off));
-            else
-                ret = verify_oqs_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
-                                      ptls_iovec_init(sigbuf.base, sigbuf.off));
-            if (ret != 0) {
-                fprintf(stderr, "verify_sign failed at iteration %zu\n", k + i);
-                goto Cleanup;
-            }
-        }
-
-        t_end = bench_time();
-
-        *t_sign += t_medium - t_start;
-        *t_verify += t_end - t_medium;
-
-        k += i_max;
-    }
-
-Cleanup:
-    ptls_buffer_dispose(&sigbuf);
-    return ret;
-}
-
-
-
+/*TODO: bench certificate verification
+ * current cert: rsa, dilithium3 */
 
 /* Single measurement.
  * for each schemes, we only bench schemes[0], refer to rsa_signature_schemes[] in lib/openssl.c */
@@ -289,47 +202,6 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
     }
     EVP_PKEY_free(pkey);
     return ret;
-}
-
-typedef struct st_auth_bench_entry_t {
-    const char *provider;
-    const char *sig_name;
-    const ptls_openssl_signature_scheme_t *schemes;
-    int enabled_by_default;
-} auth_bench_entry_t;
-
-static auth_bench_entry_t sig_list[] =
-{
-        {"default", "rsa", rsa_signature_schemes, 1},
-        {"default", "ecdsa", secp256r1_signature_schemes, 1},
-#if PTLS_OPENSSL_HAVE_ED25519
-        {"default", "ed25519", ed25519_signature_schemes, 1},
-#endif
-        {"oqsprovider", "dilithium2", dilithium2_signature_schemes, 1},
-        {"oqsprovider", "dilithium3", dilithium3_signature_schemes, 1},
-        {"oqsprovider", "dilithium5", dilithium5_signature_schemes, 1},
-};
-
-static size_t nb_sig_list = sizeof(sig_list) / sizeof(auth_bench_entry_t);
-
-static int bench_basic(uint64_t *x)
-{
-    uint64_t t_start = bench_time();
-    uint32_t a = (uint32_t)((*x) & 0xFFFFFFFF);
-    uint32_t b = (uint32_t)((*x) >> 32);
-
-    /* Evaluate the current CPU. The benchmark is designed to
-     * emulate typical encryption operations, hopefully so it
-     * will not be compiled out by the optimizer. */
-    for (unsigned int i = 0; i < 10000000; i++) {
-        uint32_t v = (a >> 3) | (a << 29);
-        v += a;
-        v ^= b;
-        b = a;
-        a = v;
-    }
-    *x = (((uint64_t)b) << 32) | a;
-    return (int)(bench_time() - t_start);
 }
 
 int main(int argc, char **argv)
