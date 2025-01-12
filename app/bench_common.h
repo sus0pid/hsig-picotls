@@ -5,7 +5,7 @@
 #ifndef HSIG_PICOTLS_BENCH_COMMON_H
 #define HSIG_PICOTLS_BENCH_COMMON_H
 
-#include <stdin.h>
+#include <stdio.h>
 #include <openssl/evp.h>
 #include "picotls.h"
 #include "picotls/openssl.h"

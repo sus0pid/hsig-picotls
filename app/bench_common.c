@@ -2,7 +2,6 @@
 // Created by xinshu on 10/01/25.
 //
 #include <sys/time.h>
-#include <stdio.h>
 #include <time.h>
 #include "bench_common.h"
 
