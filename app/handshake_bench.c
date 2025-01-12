@@ -4,12 +4,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/utsname.h>
+#include <openssl/pem.h>
+#include <openssl/provider.h>
 #include "picotls.h"
 #include "utilities.h"
 #include "oqs_util.h"
 #include "bench_common.h"
-
-static ptls_context_t *ctx, *ctx_peer;
 
 static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int mode, int expect_ticket,
                                 int check_ch, int require_client_authentication, int transfer_session,
@@ -28,9 +28,6 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
     const char *req = "GET / HTTP/1.0\r\n\r\n";
     const char *resp = "HTTP/1.0 200 OK\r\n\r\nhello world\n";
 
-    if (check_ch)
-        ctx->verify_certificate = verify_certificate;
-
     client = ptls_new(ctx, 0);
     server = ptls_new(ctx_peer, 1);
     ptls_buffer_init(&cbuf, cbuf_small, sizeof(cbuf_small));
@@ -38,7 +35,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
     ptls_buffer_init(&decbuf, decbuf_small, sizeof(decbuf_small));
 
     if (check_ch) {
-        static ptls_on_client_hello_t cb = {save_client_hello};
+        static ptls_on_client_hello_t cb = NULL;
         ctx_peer->on_client_hello = &cb;
         static const ptls_iovec_t protocols[] = {{(uint8_t *)"h2", 2}, {(uint8_t *)"http/1.1", 8}};
         client_hs_prop.client.negotiated_protocols.list = protocols;
@@ -46,7 +43,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         ptls_set_server_name(client, server_name, 0);
     }
 
-    static ptls_on_extension_t cb = {on_extension_cb};
+    static ptls_on_extension_t cb = NULL;
     ctx_peer->on_extension = &cb;
 
     if (require_client_authentication)
@@ -299,13 +296,28 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     char privkeypath[300];
     const char *sep = "/"; /*for most systems like linux, macos*/
     char *certsdir = "assets/";
+    int is_oqs_sig;
+
+    /* Document library version as it may have impact on performance */
+    p_version[0] = 0;
+    /*
+     * OPENSSL_VERSION_NUMBER is a combination of the major, minor and patch version
+     * into a single integer 0xMNNFFPP0L, where M is major, NN is minor, PP is patch
+     */
+    uint32_t combined = OPENSSL_VERSION_NUMBER;
+    int M = combined >> 28;
+    int NN = (combined >> 20) & 0xFF;
+    int FF = (combined >> 12) & 0xFF;
+    int PP = (combined >> 4) & 0xFF;
+    char letter = 'a' - 1 + PP;
+    (void)sprintf(p_version, "%d.%d.%d%c", M, NN, FF, letter);
 
     if (strcmp(sig_name, "rsa") == 0 || strcmp(sig_name, "ecdsa") == 0 || strcmp(sig_name, "ed25519") == 0) {
         /* traditional signature algos */
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
     } else {
-        is_oqs_sig = 1;
+        is_oqs_sigint = 1;
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
@@ -340,7 +352,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     int require_client_authentication = 0;
     /* test full handshake, server auth only:
      * mode TEST_HANDSHAKE_1RTT value=0 */
-    ret = bench_run_handshake(server_name, NULL, 0, 0, 0, require_client_authentication, 0, &t_client, &t_server, n);
+    int ret = bench_run_handshake(server_name, NULL, 0, 0, 0, require_client_authentication, 0, &t_client, &t_server, n);
     if (ret == 0) {
         printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                basic_ref, provider, p_version, sig_name, (int)n, (double)t_client);

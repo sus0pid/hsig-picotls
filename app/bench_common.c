@@ -36,6 +36,8 @@ auth_bench_entry_t sig_list[] =
 
 size_t nb_sig_list = sizeof(sig_list) / sizeof(auth_bench_entry_t);
 
+static ptls_context_t *ctx, *ctx_peer;
+
 int bench_basic(uint64_t *x)
 {
     uint64_t t_start = bench_time();
