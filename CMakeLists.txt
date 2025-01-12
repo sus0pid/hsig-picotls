@@ -238,8 +238,10 @@ IF (NOT WITH_FUSION)
     SET_TARGET_PROPERTIES(ptlsbench PROPERTIES EXCLUDE_FROM_ALL 1)
 ENDIF ()
 
-ADD_EXECUTABLE(authbench app/auth_bench.c app/oqs_util.c app/bench_common.c)
-TARGET_LINK_LIBRARIES(authbench ${PTLSBENCH_LIBS})
+ADD_EXECUTABLE(auth_bench app/auth_bench.c app/oqs_util.c app/bench_common.c)
+TARGET_LINK_LIBRARIES(auth_bench ${PTLSBENCH_LIBS})
+ADD_EXECUTABLE(handshake_bench app/handshake_bench.c app/oqs_util.c app/bench_common.c)
+TARGET_LINK_LIBRARIES(handshake_bench ${PTLSBENCH_LIBS})
 
 ADD_CUSTOM_TARGET(check env BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR} prove --exec '' -v ${CMAKE_CURRENT_BINARY_DIR}/*.t t/*.t WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_EXES} cli)
 
