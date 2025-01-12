@@ -26,6 +26,14 @@ typedef struct st_auth_bench_entry_t {
     int enabled_by_default;
 } auth_bench_entry_t;
 
+enum {
+    TEST_HANDSHAKE_1RTT,
+    TEST_HANDSHAKE_2RTT,
+    TEST_HANDSHAKE_HRR,
+    TEST_HANDSHAKE_HRR_STATELESS,
+    TEST_HANDSHAKE_EARLY_DATA,
+    TEST_HANDSHAKE_KEY_UPDATE
+};
 extern auth_bench_entry_t sig_list[];
 extern size_t nb_sig_list;
 
