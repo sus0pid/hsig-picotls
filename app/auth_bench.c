@@ -8,8 +8,6 @@
 #include <sys/utsname.h>
 #include <openssl/pem.h>
 #include <openssl/provider.h>
-#include "picotls.h"
-#include "picotls/openssl.h"
 #include "../lib/openssl.c"
 #include "oqs_util.h"
 #include "bench_common.h"
@@ -88,7 +86,7 @@ Cleanup:
 
 /* Measure one sign and verify implementation */
 static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *provider, const char *sig_name,
-                             ptls_openssl_signature_scheme_t *schemes, size_t n)
+                             const ptls_openssl_signature_scheme_t *schemes, size_t n)
 {
     int ret = 0;
     uint64_t t_sign = 0;

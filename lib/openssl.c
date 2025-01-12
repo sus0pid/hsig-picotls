@@ -103,32 +103,26 @@ static int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx)
 
 #endif
 
-static const ptls_openssl_signature_scheme_t rsa_signature_schemes[] = {{PTLS_SIGNATURE_RSA_PSS_RSAE_SHA256, EVP_sha256},
+const ptls_openssl_signature_scheme_t rsa_signature_schemes[] = {{PTLS_SIGNATURE_RSA_PSS_RSAE_SHA256, EVP_sha256},
                                                                         {PTLS_SIGNATURE_RSA_PSS_RSAE_SHA384, EVP_sha384},
                                                                         {PTLS_SIGNATURE_RSA_PSS_RSAE_SHA512, EVP_sha512},
                                                                         {UINT16_MAX, NULL}};
-static const ptls_openssl_signature_scheme_t secp256r1_signature_schemes[] = {{PTLS_SIGNATURE_ECDSA_SECP256R1_SHA256, EVP_sha256},
+const ptls_openssl_signature_scheme_t secp256r1_signature_schemes[] = {{PTLS_SIGNATURE_ECDSA_SECP256R1_SHA256, EVP_sha256},
                                                                               {UINT16_MAX, NULL}};
 #if PTLS_OPENSSL_HAVE_SECP384R1
-static const ptls_openssl_signature_scheme_t secp384r1_signature_schemes[] = {{PTLS_SIGNATURE_ECDSA_SECP384R1_SHA384, EVP_sha384},
+const ptls_openssl_signature_scheme_t secp384r1_signature_schemes[] = {{PTLS_SIGNATURE_ECDSA_SECP384R1_SHA384, EVP_sha384},
                                                                               {UINT16_MAX, NULL}};
 #endif
 #if PTLS_OPENSSL_HAVE_SECP521R1
-static const ptls_openssl_signature_scheme_t secp521r1_signature_schemes[] = {{PTLS_SIGNATURE_ECDSA_SECP521R1_SHA512, EVP_sha512},
+const ptls_openssl_signature_scheme_t secp521r1_signature_schemes[] = {{PTLS_SIGNATURE_ECDSA_SECP521R1_SHA512, EVP_sha512},
                                                                               {UINT16_MAX, NULL}};
 #endif
 #if PTLS_OPENSSL_HAVE_ED25519
-static const ptls_openssl_signature_scheme_t ed25519_signature_schemes[] = {{PTLS_SIGNATURE_ED25519, NULL}, {UINT16_MAX, NULL}};
+const ptls_openssl_signature_scheme_t ed25519_signature_schemes[] = {{PTLS_SIGNATURE_ED25519, NULL}, {UINT16_MAX, NULL}};
 #endif
 /**
  * post-quantum signature algorithm from oqsproviderr
  * */
-//static const ptls_openssl_signature_scheme_t dilithium_signature_schemes[] = {
-//    {PTLS_SIGNATURE_DILITHIUM2, NULL}, /* Dilithium2 */
-//    {PTLS_SIGNATURE_DILITHIUM3, NULL}, /* Dilithium3 */
-//    {PTLS_SIGNATURE_DILITHIUM5, NULL}, /* Dilithium5 */
-//    {UINT16_MAX, NULL} /* Termination */
-//};
 const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM2, NULL},
     {UINT16_MAX, NULL} /* Termination */

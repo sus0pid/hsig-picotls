@@ -3,7 +3,6 @@
 //
 #include <sys/time.h>
 #include <time.h>
-#include "../lib/openssl.c"
 #include "bench_common.h"
 
 /* Time in microseconds */

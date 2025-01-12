@@ -154,6 +154,15 @@ typedef struct st_ptls_openssl_signature_scheme_t {
     const EVP_MD *(*scheme_md)(void);
 } ptls_openssl_signature_scheme_t;
 
+extern ptls_openssl_signature_scheme_t rsa_signature_schemes[];
+extern ptls_openssl_signature_scheme_t secp256r1_signature_schemes[];
+extern ptls_openssl_signature_scheme_t secp384r1_signature_schemes[];
+extern ptls_openssl_signature_scheme_t secp521r1_signature_schemes[];
+extern ptls_openssl_signature_scheme_t ed25519_signature_schemes[];
+extern ptls_openssl_signature_scheme_t dilithium2_signature_schemes[];
+extern ptls_openssl_signature_scheme_t dilithium3_signature_schemes[];
+extern ptls_openssl_signature_scheme_t dilithium5_signature_schemes[];
+
 
 /**
  * Given a private key, returns a list of compatible signature schemes. This list is terminated by scheme_id of UINT16_MAX.
