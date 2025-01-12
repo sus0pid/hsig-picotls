@@ -10,6 +10,15 @@
 #include "picotls.h"
 #include "picotls/openssl.h"
 
+#define ok(expr) \
+    do { \
+        if (expr) { \
+            printf("ok at line %d\n", __LINE__); \
+        } else { \
+            printf("not ok at line %d\n", __LINE__); \
+        } \
+    } while (0)
+
 typedef struct st_auth_bench_entry_t {
     const char *provider;
     const char *sig_name;

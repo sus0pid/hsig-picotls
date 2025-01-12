@@ -5,18 +5,24 @@
 #include <stdio.h>
 #include "picotls.h"
 #include "utilities.h"
+#include "oqs_util.h"
 
-ptls_context_t *ctx, *ctx_peer;
+static ptls_context_t *ctx, *ctx_peer;
 
-static void ben_run_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int check_ch, int require_client_authentication,
-                           int transfer_session)
+static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int mode, int expect_ticket,
+                                int check_ch, int require_client_authentication, int transfer_session,
+                                uint64_t *t_client, uint64_t *t_server, size_t n)
 {
+    *t_client = 0;
+    *t_server = 0;
+    uint64_t t_start = bench_time();
+
     ptls_t *client, *server;
     ptls_handshake_properties_t client_hs_prop = {{{{NULL}, ticket}}}, server_hs_prop = {{{{NULL}}}};
     uint8_t cbuf_small[16384], sbuf_small[16384], decbuf_small[16384];
     ptls_buffer_t cbuf, sbuf, decbuf;
     size_t consumed, max_early_data_size = 0;
-    int ret;
+    int ret = 0;
     const char *req = "GET / HTTP/1.0\r\n\r\n";
     const char *resp = "HTTP/1.0 200 OK\r\n\r\nhello world\n";
 
@@ -39,12 +45,7 @@ static void ben_run_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, 
         static const ptls_iovec_t protocols[] = {{(uint8_t *)"h2", 2}, {(uint8_t *)"http/1.1", 8}};
         client_hs_prop.client.negotiated_protocols.list = protocols;
         client_hs_prop.client.negotiated_protocols.count = PTLS_ELEMENTSOF(protocols);
-        ptls_set_server_name(client, "test.example.com", 0);
-    }
-
-    if (can_ech(ctx, 0)) {
-        ptls_set_server_name(client, "test.example.com", 0);
-        client_hs_prop.client.ech.configs = ptls_iovec_init(ECH_CONFIG_LIST, sizeof(ECH_CONFIG_LIST) - 1);
+        ptls_set_server_name(client, server_name, 0);
     }
 
     static ptls_on_extension_t cb = {on_extension_cb};
@@ -68,6 +69,7 @@ static void ben_run_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, 
         break;
     }
 
+    ptls_set_server_name(client, server_name, 0);
     ret = ptls_handshake(client, &cbuf, NULL, NULL, &client_hs_prop);
     ok(ret == PTLS_ERROR_IN_PROGRESS);
     ok(cbuf.off != 0);
@@ -118,12 +120,7 @@ static void ben_run_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, 
     ok(sbuf.off != 0);
     if (check_ch) {
         ok(ptls_get_server_name(server) != NULL);
-        if (can_ech(ctx, 0) && !can_ech(ctx_peer, 1)) {
-            /* server should be using CHouter.sni that includes the public name of the ECH extension */
-            ok(strcmp(ptls_get_server_name(server), "example.com") == 0);
-        } else {
-            ok(strcmp(ptls_get_server_name(server), "test.example.com") == 0);
-        }
+        ok(strcmp(ptls_get_server_name(server), server_name) == 0);
         ok(ptls_get_negotiated_protocol(server) != NULL);
         ok(strcmp(ptls_get_negotiated_protocol(server), "h2") == 0);
     } else {
@@ -274,15 +271,12 @@ static void ben_run_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, 
         cbuf.off = 0;
         decbuf.off = 0;
     }
+    uint64_t t_end = bench_time();
+    *t_client = t_end - t_start;
 
     /* original_server is used for the server-side checks because handshake data is never migrated */
-    if (can_ech(ctx_peer, 1) && can_ech(ctx, 0)) {
-        ok(ptls_is_ech_handshake(client, NULL, NULL, NULL));
-        ok(ptls_is_ech_handshake(original_server, NULL, NULL, NULL));
-    } else {
-        ok(!ptls_is_ech_handshake(client, NULL, NULL, NULL));
-        ok(!ptls_is_ech_handshake(original_server, NULL, NULL, NULL));
-    }
+    ok(!ptls_is_ech_handshake(client, NULL, NULL, NULL));
+    ok(!ptls_is_ech_handshake(original_server, NULL, NULL, NULL));
 
     ptls_buffer_dispose(&cbuf);
     ptls_buffer_dispose(&sbuf);
@@ -295,26 +289,25 @@ static void ben_run_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, 
     if (check_ch)
         ctx_peer->on_client_hello = NULL;
 
-    ctx->verify_certificate = NULL;
     if (require_client_authentication)
         ctx_peer->require_client_authentication = 0;
+
+    return ret;
 }
 
-static int bench_handshake()
+static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, cosnt char *sig_name,
+                     size_t n)
 {
     char certpath[300];
     char privkeypath[300];
-    char capath[300];
     const char *sep = "/"; /*for most systems like linux, macos*/
     char *certsdir = "assets/";
 
-    if (sig_index > 2)
-    {
+    if (strcmp(sig_name, "rsa") == 0 || strcmp(sig_name, "ecdsa") == 0 || strcmp(sig_name, "ed25519") == 0) {
         /* traditional signature algos */
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
-    } else
-    {
+    } else {
         is_oqs_sig = 1;
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
@@ -332,7 +325,7 @@ static int bench_handshake()
 
     const char *server_name = (strcmp(sig_name, "rsa") == 0) ? "rsa.test.example.com" : "test.example.com";
 
-    ptls_context_t ctx = {.random_bytes = ptls_openssl_random_bytes,
+    ptls_context_t openssl_ctx = {.random_bytes = ptls_openssl_random_bytes,
         .get_time = &ptls_get_time,
         .key_exchanges = ptls_openssl_key_exchanges, /*ptls_openssl_key_exchanges by default*/
         .cipher_suites = ptls_openssl_cipher_suites_all, /*ptls_openssl_cipher_suites_all by default*/
@@ -340,35 +333,74 @@ static int bench_handshake()
         .ech = {.client = {NULL}, .server = {NULL}}, /* ech is disabled */
         .sign_certificate = &openssl_sign_certificate.super,
         .verify_certificate = &openssl_verify_certificate.super,
-        .require_oqssig_on_auth = is_oqs_sig /* oqs auth enabled */
     };
-    ptls_handshake_properties_t client_hs_prop = {{{{NULL}}}};
+
+    ctx = ctx_peer = &openssl_ctx;
+    ctx->require_oqssig_on_auth = is_oqs_sig; /* oqs auth enabled at client side */
+
+    uint64_t t_client = 0;
+    uint64_t t_server = 0;
+    int require_client_authentication = 0;
+    /* test full handshake, server auth only:
+     * mode TEST_HANDSHAKE_1RTT value=0 */
+    ret = bench_run_handshake(server_name, NULL, 0, 0, 0, require_client_authentication, 0, &t_client, &t_server, n);
+    if (ret == 0) {
+        printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+               basic_ref, provider, p_version, sig_name, (int)n, (double)t_client);
+    }
+    return ret;
 }
 
 int main(int argc, char **argv)
 {
-    ERR_load_crypto_strings();
-    OpenSSL_add_all_algorithms();
+    // Create a new OpenSSL library context
+    OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
+    T(libctx != NULL);
+    // Load default provider
+    OSSL_PROVIDER *default_provider = load_default_provider(libctx);
+    // Load OQS provider
+    OSSL_PROVIDER *oqs_provider = load_oqs_provider(libctx);
 
-#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-    /* Explicitly load the legacy provider in addition to default, as we test Blowfish in one of the tests. */
-    OSSL_PROVIDER *legacy = OSSL_PROVIDER_load(NULL, "legacy");
-    OSSL_PROVIDER *dflt = OSSL_PROVIDER_load(NULL, "default");
-#elif !defined(OPENSSL_NO_ENGINE)
-    /* Load all compiled-in ENGINEs */
-    ENGINE_load_builtin_engines();
-    ENGINE_register_all_ciphers();
-    ENGINE_register_all_digests();
-#endif
+    int ret = 0;
+    int force_all_tests = 0;
+    uint64_t x = 0xdeadbeef;
+    struct utsname uts;
+    int basic_ref = bench_basic(&x);
+    char OS[128];
+    char HW[128];
 
+    OS[0] = 0;
+    HW[0] = 0;
+    if (uname(&uts) == 0) {
+        if (strlen(uts.sysname) + 1 < sizeof(OS)) {
+            strcpy(OS, uts.sysname);
+        }
+        if (strlen(uts.machine) + 1 < sizeof(HW)) {
+            strcpy(HW, uts.machine);
+        }
+    }
 
+    if (argc == 2 && strcmp(argv[1], "-f") == 0) {
+        force_all_tests = 1;
+    } else if (argc > 1) {
+        fprintf(stderr, "Usage: %s [-f]\n   Use option \"-f\" to force execution of the slower tests.\n", argv[0]);
+        exit(-1);
+    }
 
+    /*todo: output handshake ops/sec(throughtput) and time cost */
+    printf(
+        "OS, HW, bits, 10M ops, provider, version, algorithm, N, client_us,\n");
 
+    for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
+        if (sig_list[i].enabled_by_default || force_all_tests) {
+            ret = bench_tls(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name, 1); /*options: 100000, 1000000, 1000*/
+        }
+    }
 
+    // Unload providers and free library context
+    OSSL_PROVIDER_unload(default_provider);
+    OSSL_PROVIDER_unload(oqs_provider);
+    OSSL_LIB_CTX_free(libctx);
 
-#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-    OSSL_PROVIDER_unload(dflt);
-    OSSL_PROVIDER_unload(oqsprovider);
-#endif
-    return 0;
+    return ret;
 }

@@ -195,9 +195,6 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
             printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                    basic_ref, provider, p_version, sig_name, (int)n, avg_t_sign, avg_t_verify,
                    1000000.0 / avg_t_sign, 1000000.0 / avg_t_verify);
-//            printf("%s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
-//                   basic_ref, provider, p_version, sig_name, (int)n, (int)t_sign, (int)t_verify,
-//                   (double)n * 1000000.0 / t_sign, (double)n * 1000000.0 / t_verify);
         }
     }
     EVP_PKEY_free(pkey);
