@@ -3,9 +3,11 @@
 //
 #include <string.h>
 #include <stdio.h>
+#include <sys/utsname.h>
 #include "picotls.h"
 #include "utilities.h"
 #include "oqs_util.h"
+#include "bench_common.h"
 
 static ptls_context_t *ctx, *ctx_peer;
 
@@ -25,10 +27,6 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
     int ret = 0;
     const char *req = "GET / HTTP/1.0\r\n\r\n";
     const char *resp = "HTTP/1.0 200 OK\r\n\r\nhello world\n";
-
-    client_sc_callcnt = 0;
-    server_sc_callcnt = 0;
-    async_sc_callcnt = 0;
 
     if (check_ch)
         ctx->verify_certificate = verify_certificate;
@@ -295,8 +293,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
     return ret;
 }
 
-static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, cosnt char *sig_name,
-                     size_t n)
+static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, const char *sig_name, size_t n)
 {
     char certpath[300];
     char privkeypath[300];
