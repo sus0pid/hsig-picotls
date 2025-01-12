@@ -10,7 +10,6 @@
 #include <openssl/provider.h>
 #include "picotls.h"
 #include "picotls/openssl.h"
-#include "../lib/openssl.c"
 #include "oqs_util.h"
 #include "bench_common.h"
 
