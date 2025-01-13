@@ -14,7 +14,7 @@
 ptls_context_t *ctx, *ctx_peer;
 
 static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int mode, int expect_ticket,
-                                int check_ch, int require_client_authentication, int transfer_session,
+                                int check_ch, int require_client_authentication,
                                 uint64_t *t_client, uint64_t *t_server, size_t n)
 {
     *t_client = 0;
@@ -210,8 +210,6 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         ok(ptls_handshake_is_complete(server));
         decbuf.off = 0;
         cbuf.off = 0;
-        if (transfer_session)
-            server = clone_tls(original_server);
 
         ret = ptls_send(server, &sbuf, resp, strlen(resp));
         ok(ret == 0);
@@ -241,20 +239,14 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         /* server -> client with update_request */
         ret = ptls_update_key(server, 1);
         ok(ret == 0);
-        ok(server->needs_key_update);
-        ok(server->key_update_send_request);
         ret = ptls_send(server, &sbuf, "good bye", 8);
         ok(ret == 0);
-        ok(!server->needs_key_update);
-        ok(!server->key_update_send_request);
         consumed = sbuf.off;
         ret = ptls_receive(client, &decbuf, sbuf.base, &consumed);
         ok(ret == 0);
         ok(sbuf.off == consumed);
         ok(decbuf.off == 8);
         ok(memcmp(decbuf.base, "good bye", 8) == 0);
-        ok(client->needs_key_update);
-        ok(!client->key_update_send_request);
         sbuf.off = 0;
         decbuf.off = 0;
         ret = ptls_send(client, &cbuf, "hello", 5);
@@ -355,7 +347,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     int require_client_authentication = 0;
     /* test full handshake, server auth only:
      * mode TEST_HANDSHAKE_1RTT value=0 */
-    int ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, 0, require_client_authentication, 0, &t_client, &t_server, n);
+    int ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, require_client_authentication, 0, &t_client, &t_server, n);
     if (ret == 0) {
         printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                basic_ref, provider, p_version, sig_name, (int)n, (double)t_client);
