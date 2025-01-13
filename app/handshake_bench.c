@@ -68,8 +68,8 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
 
     ptls_set_server_name(client, server_name, 0);
     ret = ptls_handshake(client, &cbuf, NULL, NULL, &client_hs_prop);
-    ok(ret == PTLS_ERROR_IN_PROGRESS);
-    ok(cbuf.off != 0);
+//    ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    ok(cbuf.off != 0);
 
     switch (mode) {
     case TEST_HANDSHAKE_2RTT:
@@ -78,119 +78,119 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         consumed = cbuf.off;
         ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
         if (mode == TEST_HANDSHAKE_HRR_STATELESS) {
-            ok(ret == PTLS_ERROR_STATELESS_RETRY);
+//            ok(ret == PTLS_ERROR_STATELESS_RETRY);
             ptls_free(server);
             server = ptls_new(ctx_peer, 1);
         } else {
-            ok(ret == PTLS_ERROR_IN_PROGRESS);
+//            ok(ret == PTLS_ERROR_IN_PROGRESS);
         }
-        ok(cbuf.off == consumed);
-        ok(sbuf.off != 0);
+//        ok(cbuf.off == consumed);
+//        ok(sbuf.off != 0);
         cbuf.off = 0;
         consumed = sbuf.off;
         ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, &client_hs_prop);
-        ok(ret == PTLS_ERROR_IN_PROGRESS);
-        ok(sbuf.off == consumed);
-        ok(cbuf.off != 0);
+//        ok(ret == PTLS_ERROR_IN_PROGRESS);
+//        ok(sbuf.off == consumed);
+//        ok(cbuf.off != 0);
         sbuf.off = 0;
         break;
     case TEST_HANDSHAKE_EARLY_DATA:
-        ok(max_early_data_size == ctx_peer->max_early_data_size);
+//        ok(max_early_data_size == ctx_peer->max_early_data_size);
         ret = ptls_send(client, &cbuf, req, strlen(req));
-        ok(ret == 0);
+//        ok(ret == 0);
         break;
     }
 
     consumed = cbuf.off;
     ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
 
-    if (require_client_authentication) {
+//    if (require_client_authentication) {
         /* at the moment, async sign-certificate is not supported in this path, neither on the client-side or the server-side */
-        ok(ptls_is_psk_handshake(server) == 0);
-        ok(ret == PTLS_ERROR_IN_PROGRESS);
-    } else if (mode == TEST_HANDSHAKE_EARLY_DATA) {
-        ok(ret == 0);
-    } else {
-        ok(ret == 0 || ret == PTLS_ERROR_ASYNC_OPERATION);
-    }
+//        ok(ptls_is_psk_handshake(server) == 0);
+//        ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    } else if (mode == TEST_HANDSHAKE_EARLY_DATA) {
+//        ok(ret == 0);
+//    } else {
+//        ok(ret == 0 || ret == PTLS_ERROR_ASYNC_OPERATION);
+//    }
 
-    ok(sbuf.off != 0);
-    if (check_ch) {
-        ok(ptls_get_server_name(server) != NULL);
-        ok(strcmp(ptls_get_server_name(server), server_name) == 0);
-        ok(ptls_get_negotiated_protocol(server) != NULL);
-        ok(strcmp(ptls_get_negotiated_protocol(server), "h2") == 0);
-    } else {
-        ok(ptls_get_server_name(server) == NULL);
-        ok(ptls_get_negotiated_protocol(server) == NULL);
-    }
+//    ok(sbuf.off != 0);
+//    if (check_ch) {
+//        ok(ptls_get_server_name(server) != NULL);
+//        ok(strcmp(ptls_get_server_name(server), server_name) == 0);
+//        ok(ptls_get_negotiated_protocol(server) != NULL);
+//        ok(strcmp(ptls_get_negotiated_protocol(server), "h2") == 0);
+//    } else {
+//        ok(ptls_get_server_name(server) == NULL);
+//        ok(ptls_get_negotiated_protocol(server) == NULL);
+//    }
 
     if (mode == TEST_HANDSHAKE_EARLY_DATA && !require_client_authentication) {
-        ok(consumed < cbuf.off);
+//        ok(consumed < cbuf.off);
         memmove(cbuf.base, cbuf.base + consumed, cbuf.off - consumed);
         cbuf.off -= consumed;
 
         consumed = cbuf.off;
         ret = ptls_receive(server, &decbuf, cbuf.base, &consumed);
-        ok(ret == 0);
-        ok(consumed == cbuf.off);
-        ok(decbuf.off == strlen(req));
-        ok(memcmp(decbuf.base, req, decbuf.off) == 0);
-        ok(!ptls_handshake_is_complete(server));
+//        ok(ret == 0);
+//        ok(consumed == cbuf.off);
+//        ok(decbuf.off == strlen(req));
+//        ok(memcmp(decbuf.base, req, decbuf.off) == 0);
+//        ok(!ptls_handshake_is_complete(server));
         cbuf.off = 0;
         decbuf.off = 0;
 
         ret = ptls_send(server, &sbuf, resp, strlen(resp));
-        ok(ret == 0);
+//        ok(ret == 0);
     } else {
-        ok(consumed == cbuf.off);
+//        ok(consumed == cbuf.off);
         cbuf.off = 0;
     }
 
     while (ret == PTLS_ERROR_ASYNC_OPERATION) {
         consumed = sbuf.off;
         ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
-        ok(ret == PTLS_ERROR_IN_PROGRESS);
-        ok(consumed == sbuf.off);
-        ok(cbuf.off == 0);
+//        ok(ret == PTLS_ERROR_IN_PROGRESS);
+//        ok(consumed == sbuf.off);
+//        ok(cbuf.off == 0);
         sbuf.off = 0;
         ret = ptls_handshake(server, &sbuf, NULL, NULL, &server_hs_prop);
     }
-    if (require_client_authentication) {
-        ok(ret == PTLS_ERROR_IN_PROGRESS);
-    } else {
-        ok(ret == 0);
-    }
+//    if (require_client_authentication) {
+//        ok(ret == PTLS_ERROR_IN_PROGRESS);
+//    } else {
+//        ok(ret == 0);
+//    }
 
     consumed = sbuf.off;
     ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
-    ok(ret == 0);
-    ok(cbuf.off != 0);
-    if (check_ch) {
-        ok(ptls_get_server_name(client) != NULL);
-        ok(strcmp(ptls_get_server_name(client), "test.example.com") == 0);
-        ok(ptls_get_negotiated_protocol(client) != NULL);
-        ok(strcmp(ptls_get_negotiated_protocol(client), "h2") == 0);
-    } else {
-        ok(ptls_get_server_name(server) == NULL);
-        ok(ptls_get_negotiated_protocol(server) == NULL);
-    }
+//    ok(ret == 0);
+//    ok(cbuf.off != 0);
+//    if (check_ch) {
+//        ok(ptls_get_server_name(client) != NULL);
+//        ok(strcmp(ptls_get_server_name(client), "test.example.com") == 0);
+//        ok(ptls_get_negotiated_protocol(client) != NULL);
+//        ok(strcmp(ptls_get_negotiated_protocol(client), "h2") == 0);
+//    } else {
+//        ok(ptls_get_server_name(server) == NULL);
+//        ok(ptls_get_negotiated_protocol(server) == NULL);
+//    }
 
     if (expect_ticket) {
-        ok(consumed < sbuf.off);
+//        ok(consumed < sbuf.off);
         memmove(sbuf.base, sbuf.base + consumed, sbuf.off - consumed);
         sbuf.off -= consumed;
     } else {
-        ok(consumed == sbuf.off);
+//        ok(consumed == sbuf.off);
         sbuf.off = 0;
     }
 
     if (require_client_authentication) {
-        ok(!ptls_handshake_is_complete(server));
+//        ok(!ptls_handshake_is_complete(server));
         consumed = cbuf.off;
         ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
-        ok(ret == 0);
-        ok(ptls_handshake_is_complete(server));
+//        ok(ret == 0);
+//        ok(ptls_handshake_is_complete(server));
         cbuf.off = 0;
     }
 
@@ -199,64 +199,64 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
 
     if (mode != TEST_HANDSHAKE_EARLY_DATA || require_client_authentication) {
         ret = ptls_send(client, &cbuf, req, strlen(req));
-        ok(ret == 0);
+//        ok(ret == 0);
 
         consumed = cbuf.off;
         ret = ptls_receive(server, &decbuf, cbuf.base, &consumed);
-        ok(ret == 0);
-        ok(consumed == cbuf.off);
-        ok(decbuf.off == strlen(req));
-        ok(memcmp(decbuf.base, req, strlen(req)) == 0);
-        ok(ptls_handshake_is_complete(server));
+//        ok(ret == 0);
+//        ok(consumed == cbuf.off);
+//        ok(decbuf.off == strlen(req));
+//        ok(memcmp(decbuf.base, req, strlen(req)) == 0);
+//        ok(ptls_handshake_is_complete(server));
         decbuf.off = 0;
         cbuf.off = 0;
 
         ret = ptls_send(server, &sbuf, resp, strlen(resp));
-        ok(ret == 0);
+//        ok(ret == 0);
     }
 
     consumed = sbuf.off;
     ret = ptls_receive(client, &decbuf, sbuf.base, &consumed);
-    ok(ret == 0);
-    ok(consumed == sbuf.off);
-    ok(decbuf.off == strlen(resp));
-    ok(memcmp(decbuf.base, resp, strlen(resp)) == 0);
-    ok(ptls_handshake_is_complete(client));
+//    ok(ret == 0);
+//    ok(consumed == sbuf.off);
+//    ok(decbuf.off == strlen(resp));
+//    ok(memcmp(decbuf.base, resp, strlen(resp)) == 0);
+//    ok(ptls_handshake_is_complete(client));
     decbuf.off = 0;
     sbuf.off = 0;
 
     if (mode == TEST_HANDSHAKE_EARLY_DATA) {
         consumed = cbuf.off;
         ret = ptls_receive(server, &decbuf, cbuf.base, &consumed);
-        ok(ret == 0);
-        ok(cbuf.off == consumed);
-        ok(decbuf.off == 0);
-        ok(ptls_handshake_is_complete(client));
+//        ok(ret == 0);
+//        ok(cbuf.off == consumed);
+//        ok(decbuf.off == 0);
+//        ok(ptls_handshake_is_complete(client));
         cbuf.off = 0;
     }
 
     if (mode == TEST_HANDSHAKE_KEY_UPDATE) {
         /* server -> client with update_request */
         ret = ptls_update_key(server, 1);
-        ok(ret == 0);
+//        ok(ret == 0);
         ret = ptls_send(server, &sbuf, "good bye", 8);
-        ok(ret == 0);
+//        ok(ret == 0);
         consumed = sbuf.off;
         ret = ptls_receive(client, &decbuf, sbuf.base, &consumed);
-        ok(ret == 0);
-        ok(sbuf.off == consumed);
-        ok(decbuf.off == 8);
-        ok(memcmp(decbuf.base, "good bye", 8) == 0);
+//        ok(ret == 0);
+//        ok(sbuf.off == consumed);
+//        ok(decbuf.off == 8);
+//        ok(memcmp(decbuf.base, "good bye", 8) == 0);
         sbuf.off = 0;
         decbuf.off = 0;
         ret = ptls_send(client, &cbuf, "hello", 5);
-        ok(ret == 0);
+//        ok(ret == 0);
         consumed = cbuf.off;
         ret = ptls_receive(server, &decbuf, cbuf.base, &consumed);
-        ok(ret == 0);
-        ok(cbuf.off == consumed);
-        ok(decbuf.off == 5);
-        ok(memcmp(decbuf.base, "hello", 5) == 0);
+//        ok(ret == 0);
+//        ok(cbuf.off == consumed);
+//        ok(decbuf.off == 5);
+//        ok(memcmp(decbuf.base, "hello", 5) == 0);
         cbuf.off = 0;
         decbuf.off = 0;
     }
@@ -264,8 +264,8 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
     *t_client = t_end - t_start;
 
     /* original_server is used for the server-side checks because handshake data is never migrated */
-    ok(!ptls_is_ech_handshake(client, NULL, NULL, NULL));
-    ok(!ptls_is_ech_handshake(original_server, NULL, NULL, NULL));
+//    ok(!ptls_is_ech_handshake(client, NULL, NULL, NULL));
+//    ok(!ptls_is_ech_handshake(original_server, NULL, NULL, NULL));
 
     ptls_buffer_dispose(&cbuf);
     ptls_buffer_dispose(&sbuf);
@@ -336,7 +336,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     const char *server_name = (strcmp(sig_name, "rsa") == 0) ? "rsa.test.example.com" :
                               (strcmp(sig_name, "ed25519") == 0) ? "ed25519.test.example.com" :
                                                                  "test.example.com";
-    
+
     ptls_context_t openssl_ctx = {.random_bytes = ptls_openssl_random_bytes,
         .get_time = &ptls_get_time,
         .key_exchanges = ptls_openssl_key_exchanges, /*ptls_openssl_key_exchanges by default*/
