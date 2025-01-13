@@ -176,7 +176,7 @@ const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_oqs_signature_schemes
     else
         fprintf(stderr, "Unknown oqs siganture scheme: %s\n", sig_name);
 
-    printf("[%s]: signame: %s is found, %d\n", __func__, sig_name, __LINE__);
+    PTLS_DEBUGF("[%s]: signame: %s is found, %d\n", __func__, sig_name, __LINE__);
     return schemes;
 }
 
@@ -1037,7 +1037,7 @@ Exit:
 static int do_oqs_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                        ptls_async_job_t **async)
 {
-//    printf("[%s]: call do_oqs_sign for signing handshake transcripts, %d\n", __func__, __LINE__);
+//    PTLS_DEBUGF("[%s]: call do_oqs_sign for signing handshake transcripts, %d\n", __func__, __LINE__);
     EVP_MD_CTX *ctx = NULL;
 //    const EVP_MD *md = scheme->scheme_md != NULL ? scheme->scheme_md() : NULL;
     size_t siglen;
@@ -1080,7 +1080,7 @@ Exit:
 static int do_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                    ptls_async_job_t **async)
 {
-//    printf("[%s]: call do_sign for signing handshake transcripts, %d\n", __func__, __LINE__);
+//    PTLS_DEBUGF("[%s]: call do_sign for signing handshake transcripts, %d\n", __func__, __LINE__);
     EVP_MD_CTX *ctx = NULL;
     const EVP_MD *md = scheme->scheme_md != NULL ? scheme->scheme_md() : NULL;
     EVP_PKEY_CTX *pkey_ctx;
@@ -1598,7 +1598,7 @@ static int sign_certificate(ptls_sign_certificate_t *_self, ptls_t *tls, ptls_as
     if ((scheme = ptls_openssl_select_signature_scheme(self->schemes, algorithms, num_algorithms)) == NULL)
         return PTLS_ALERT_HANDSHAKE_FAILURE;
     *selected_algorithm = scheme->scheme_id;
-    printf("[%s]: selected_sign_scheme_id 0x%04x, %d", __func__, scheme->scheme_id, __LINE__);
+    PTLS_DEBUGF("[%s]: selected_sign_scheme_id 0x%04x, %d", __func__, scheme->scheme_id, __LINE__);
 
 #if PTLS_OPENSSL_HAVE_ASYNC
     if (!self->async && async != NULL) {
@@ -1736,7 +1736,7 @@ Exit:
 /* initiate oqs signature algo for signing operation */
 int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key, const char *sig_name)
 {
-    printf("[%s]: initiate oqs sign certificate, signame: %s, %d\n", __func__, sig_name, __LINE__);
+    PTLS_DEBUGF("[%s]: initiate oqs sign certificate, signame: %s, %d\n", __func__, sig_name, __LINE__);
 
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
@@ -1752,7 +1752,7 @@ int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self
 /* initiate traditional signature algo for signing operation*/
 int ptls_openssl_init_trad_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key)
 {
-    printf("[%s]: initiate traditional sign certificate, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: initiate traditional sign certificate, %d\n", __func__, __LINE__);
 
     *self = (ptls_openssl_sign_certificate_t){.super = {sign_certificate}, .async = 0 /* libssl has it off by default too */};
 
@@ -1831,7 +1831,7 @@ static int verify_cert_chain(X509_STORE *store, X509 *cert, STACK_OF(X509) * cha
     int ret;
     *ossl_x509_err = 0;
 
-    printf("[%s]: is_server = %d, server_name = %s, line%d\n", __func__, is_server, server_name, __LINE__);
+    PTLS_DEBUGF("[%s]: is_server = %d, server_name = %s, line%d\n", __func__, is_server, server_name, __LINE__);
 
     /* verify certificate chain */
     if ((verify_ctx = X509_STORE_CTX_new()) == NULL) {
@@ -1897,7 +1897,7 @@ Exit:
     if (verify_ctx != NULL)
         X509_STORE_CTX_free(verify_ctx);
     if (ret)
-        printf("[%s]: verify certificate chain, error ret = %d, line%d\n", __func__, ret, __LINE__);
+        PTLS_DEBUGF("[%s]: verify certificate chain, error ret = %d, line%d\n", __func__, ret, __LINE__);
     return ret;
 }
 
@@ -1905,7 +1905,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
                        int (**verifier)(void *, uint16_t, ptls_iovec_t, ptls_iovec_t), void **verify_data,
                        ptls_iovec_t *certs, size_t num_certs, int is_oqs_sig)
 {
-    printf("[%s]: verify certificate callback function, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: verify certificate callback function, %d\n", __func__, __LINE__);
     ptls_openssl_verify_certificate_t *self = (ptls_openssl_verify_certificate_t *)_self;
     X509 *cert = NULL;
     STACK_OF(X509) *chain = sk_X509_new_null();
@@ -1915,7 +1915,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
     /* If any certs are given, convert them to OpenSSL representation, then verify the cert chain. If no certs are given, just give
      * the override_callback to see if we want to stay fail open. */
     if (num_certs != 0) {
-        printf("[%s]: num_certs = %d, %d\n", __func__, num_certs, __LINE__);
+        PTLS_DEBUGF("[%s]: num_certs = %d, %d\n", __func__, num_certs, __LINE__);
         if ((cert = to_x509(certs[0])) == NULL) {
             ret = PTLS_ALERT_BAD_CERTIFICATE;
             goto Exit;
@@ -1937,7 +1937,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
     /* When override callback is available, let it override the error. */
     if (self->override_callback != NULL)
     {
-        printf("[%s]: override certificate verification callback is called, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: override certificate verification callback is called, %d\n", __func__, __LINE__);
         ret = self->override_callback->cb(self->override_callback, tls, ret, ossl_x509_err, cert, chain);
     }
 
@@ -1949,7 +1949,7 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
         ret = PTLS_ALERT_BAD_CERTIFICATE;
         goto Exit;
     }
-    printf("[%s]: public key of the sender has been extracted, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: public key of the sender has been extracted, %d\n", __func__, __LINE__);
 
     /* todo: transfer is_oqs_cert when setting up certificate verify() */
     if (!is_oqs_sig)
@@ -1972,12 +1972,12 @@ int ptls_openssl_init_verify_certificate(ptls_openssl_verify_certificate_t *self
     if (store != NULL) {
         X509_STORE_up_ref(store);
         self->cert_store = store;
-        printf("[%s]: store is set, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: store is set, %d\n", __func__, __LINE__);
     } else {
         /* use default store */
         if ((self->cert_store = ptls_openssl_create_default_certificate_store()) == NULL)
             return -1;
-        printf("[%s]: default store is set successfully, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: default store is set successfully, %d\n", __func__, __LINE__);
     }
 
     return 0;
@@ -1996,12 +1996,6 @@ X509_STORE *ptls_openssl_create_default_certificate_store(void)
 
     if ((store = X509_STORE_new()) == NULL)
         goto Error;
-//    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
-//        goto Error;
-//    if (X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT) != 1) {
-//        fprintf(stderr, "failed to load default certificate file\n");
-//        goto Error;
-//    }
 
     /* load our default trad ca file for testing @xinshu*/
     if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL)
@@ -2027,7 +2021,7 @@ X509_STORE *ptls_openssl_create_default_certificate_store(void)
 
     return store;
 Error:
-    printf("[%s]: default cert store created error, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: default cert store created error, %d\n", __func__, __LINE__);
     if (store != NULL)
         X509_STORE_free(store);
     return NULL;

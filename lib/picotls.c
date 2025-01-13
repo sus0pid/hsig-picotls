@@ -2254,7 +2254,7 @@ static int encode_client_hello(ptls_context_t *ctx, ptls_buffer_t *sendbuf, enum
             });
             /* push require oqs signature scheme in cert&&certverify @xinshu*/
             if (ctx->require_oqssig_on_auth) {
-                printf("[%s]: push require_oqssig in extension, %d\n", __func__, __LINE__);
+                PTLS_DEBUGF("[%s]: push require_oqssig in extension, %d\n", __func__, __LINE__);
                 buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH, {});
             }
             if (ctx->key_exchanges != NULL) {
@@ -2356,11 +2356,11 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     if (tls->server_name != NULL && !ptls_server_name_is_ipaddr(tls->server_name))
         sni_name = tls->server_name;
-    printf("[%s]: sni_name = %s\n!", __func__, sni_name);
+    PTLS_DEBUGF("[%s]: sni_name = %s\n!", __func__, sni_name);
 
     /* try to use ECH (ignore broken ECHConfigList; it is delivered insecurely) */
     if (properties != NULL) {
-        printf("[%s]: use ECH, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: use ECH, %d\n", __func__, __LINE__);
         if (!is_second_flight && sni_name != NULL && tls->ctx->ech.client.ciphers != NULL) {
             if (properties->client.ech.configs.len != 0) {
                 struct st_decoded_ech_config_t decoded;
@@ -2379,7 +2379,7 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     /* use external PSK if provided */
     if (tls->ctx->pre_shared_key.identity.base != NULL) {
-        printf("[%s]: use externel psk, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: use externel psk, %d\n", __func__, __LINE__);
         if (!is_second_flight) {
             tls->client.offered_psk = 1;
             for (size_t i = 0; tls->ctx->cipher_suites[i] != NULL; ++i) {
@@ -2404,7 +2404,7 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
     /* try to setup resumption-related data, unless external PSK is used */
     if (psk.secret.base == NULL && properties != NULL && properties->client.session_ticket.base != NULL &&
         tls->ctx->key_exchanges != NULL) {
-        printf("[%s]: try to set up resumption-related data, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: try to set up resumption-related data, %d\n", __func__, __LINE__);
         ptls_key_exchange_algorithm_t *key_share = NULL;
         ptls_cipher_suite_t *cipher_suite = NULL;
         uint32_t max_early_data_size;
@@ -2428,7 +2428,7 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
 
     /* send 0-RTT related signals back to the client */
     if (properties != NULL) {
-        printf("[%s]: send 0-rtt related signals back to client, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: send 0-rtt related signals back to client, %d\n", __func__, __LINE__);
         if (tls->client.using_early_data) {
             properties->client.early_data_acceptance = PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN;
         } else {
@@ -2441,21 +2441,21 @@ static int send_client_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptls_
     /* use the default key share if still not undetermined */
     if (tls->key_share == NULL && tls->ctx->key_exchanges != NULL &&
         !(properties != NULL && properties->client.negotiate_before_key_exchange)) {
-        printf("[%s]: use default key share, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: use default key share, %d\n", __func__, __LINE__);
         tls->key_share = tls->ctx->key_exchanges[0];
     }
 
     /* instantiate key share context */
     assert(tls->client.key_share_ctx == NULL);
     if (tls->key_share != NULL) {
-        printf("[%s]: generate key share, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: generate key share, %d\n", __func__, __LINE__);
         if ((ret = tls->key_share->create(tls->key_share, &tls->client.key_share_ctx)) != 0)
             goto Exit;
     }
 
     /* initialize key schedule */
     if (!is_second_flight) {
-        printf("[%s]: initialize key schedule, %d\n", __func__, __LINE__);
+        PTLS_DEBUGF("[%s]: initialize key schedule, %d\n", __func__, __LINE__);
         if ((tls->key_schedule = key_schedule_new(tls->cipher_suite, tls->ctx->cipher_suites, tls->ech.aead != NULL)) == NULL) {
             ret = PTLS_ERROR_NO_MEMORY;
             goto Exit;
@@ -3156,7 +3156,7 @@ static int default_emit_certificate_cb(ptls_emit_certificate_t *_self, ptls_t *t
                                                   ptls_iovec_init(NULL, 0))) != 0)
             goto Exit;
     });
-    printf("[%s]: send certificate with default certificate cb, line%d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: send certificate with default certificate cb, line%d\n", __func__, __LINE__);
 
     ret = 0;
 Exit:
@@ -3262,7 +3262,7 @@ static int client_handle_certificate_request(ptls_t *tls, ptls_iovec_t message, 
 
 static int handle_certificate(ptls_t *tls, const uint8_t *src, const uint8_t *end, int *got_certs)
 {
-    printf("[%s]: handling certificate, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: handling certificate, %d\n", __func__, __LINE__);
     ptls_iovec_t certs[16];
     size_t num_certs = 0;
     int ret = 0;
@@ -3753,14 +3753,14 @@ static int decode_client_hello(ptls_context_t *ctx, struct st_ptls_client_hello_
             ch->negotiated_groups = ptls_iovec_init(src, end - src);
             break;
         case PTLS_EXTENSION_TYPE_SIGNATURE_ALGORITHMS:
-            printf("[%s]: decoding signature algorithms extension, line@%d\n", __func__, __LINE__);
+            PTLS_DEBUGF("[%s]: decoding signature algorithms extension, line@%d\n", __func__, __LINE__);
             if ((ret = decode_signature_algorithms(&ch->signature_algorithms, &src, end)) != 0)
                 goto Exit;
-            printf("[%s]: number of decoded signature algorithms: %d, line@%d\n", __func__, ch->signature_algorithms.count, __LINE__);
+            PTLS_DEBUGF("[%s]: number of decoded signature algorithms: %d, line@%d\n", __func__, ch->signature_algorithms.count, __LINE__);
             break;
             /* decode require_oqssig_on_auth extension @xinshu */
         case PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH:
-            printf("[%s]: server get oqs signature indicator, line@%d\n", __func__, __LINE__);
+            PTLS_DEBUGF("[%s]: server get oqs signature indicator, line@%d\n", __func__, __LINE__);
             ch->use_oqssig_on_auth = 1;
             break;
         case PTLS_EXTENSION_TYPE_KEY_SHARE:
@@ -4061,13 +4061,13 @@ static inline int call_on_client_hello_cb(ptls_t *tls, ptls_iovec_t server_name,
                                           size_t num_psk_identities, int incompatible_version)
 {
     //XS---------------------------------------------------------------
-    printf("[%s]: server gets the following sig algos from client hello, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: server gets the following sig algos from client hello, %d\n", __func__, __LINE__);
     // Print the number of signature algorithms
-    printf("Number of signature algorithms: %zu\n", num_sig_algos);
+    PTLS_DEBUGF("Number of signature algorithms: %zu\n", num_sig_algos);
     // Print each signature algorithm
-    printf("Signature algorithms:\n");
+    PTLS_DEBUGF("Signature algorithms:\n");
     for (size_t i = 0; i < num_sig_algos; i++) {
-        printf("  [%zu]: 0x%04x\n", i, sig_algos[i]); // Print as hexadecimal
+        PTLS_DEBUGF("  [%zu]: 0x%04x\n", i, sig_algos[i]); // Print as hexadecimal
     }
     //XS---------------------------------------------------------------
     if (tls->ctx->on_client_hello == NULL)
@@ -4842,7 +4842,7 @@ static int server_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
         ptls_buffer_push_block(sendbuf, 2, {
             if (tls->server_name != NULL) {
                 //XS---------------------------------------------------------------
-                printf("[%s]: tls->sever_name: %s, @%d\n", __func__, tls->server_name, __LINE__);
+                PTLS_DEBUGF("[%s]: tls->sever_name: %s, @%d\n", __func__, tls->server_name, __LINE__);
                 //XS---------------------------------------------------------------
 
                 /* In this event, the server SHALL include an extension of type "server_name" in the (extended) server hello.
