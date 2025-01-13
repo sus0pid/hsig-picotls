@@ -966,6 +966,7 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
         break;
     }
 
+    /*client send clienthello*/
     ret = ptls_handshake(client, &cbuf, NULL, NULL, &client_hs_prop);
     ok(ret == PTLS_ERROR_IN_PROGRESS);
     ok(cbuf.off != 0);
@@ -1001,6 +1002,7 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
     }
 
     consumed = cbuf.off;
+    /* server receive ClientHello */
     ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
 
     if (require_client_authentication) {
@@ -1053,11 +1055,13 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
 
     while (ret == PTLS_ERROR_ASYNC_OPERATION) {
         consumed = sbuf.off;
+        /* client receive ServerHello and send FIN */
         ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
         ok(ret == PTLS_ERROR_IN_PROGRESS);
         ok(consumed == sbuf.off);
         ok(cbuf.off == 0);
         sbuf.off = 0;
+        /* server receive FIN */
         ret = ptls_handshake(server, &sbuf, NULL, NULL, &server_hs_prop);
     }
     if (require_client_authentication) {
@@ -1067,6 +1071,7 @@ static void test_handshake(ptls_iovec_t ticket, int mode, int expect_ticket, int
     }
 
     consumed = sbuf.off;
+    /* client receive Serverhello+FIN */
     ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
     ok(ret == 0);
     ok(cbuf.off != 0);
