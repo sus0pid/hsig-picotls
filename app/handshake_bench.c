@@ -312,15 +312,11 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
         is_oqs_sig = 0;
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
-        printf("sig_name: %s, is_oqs_sig: %d\n", sig_name, is_oqs_sig);
-        printf("certpath: %s\nprivkeypath: %s\n", certpath, privkeypath);
     } else {
         is_oqs_sig = 1;
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
-        printf("sig_name: %s, is_oqs_sig: %d\n", sig_name, is_oqs_sig);
-        printf("certpath: %s\nprivkeypath: %s\n", certpath, privkeypath);
     }
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
@@ -328,7 +324,6 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
 
     setup_certificate(&cert, certpath);
     setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
-    printf("is_oqs_sig: %d\n", is_oqs_sig);
 
     /* setup ca cert file */
     ptls_openssl_init_verify_certificate(&openssl_verify_certificate, NULL);
