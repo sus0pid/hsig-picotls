@@ -37,16 +37,16 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
     ptls_buffer_init(&decbuf, decbuf_small, sizeof(decbuf_small));
 
     if (check_ch) {
-        static ptls_on_client_hello_t cb = NULL;
-        ctx_peer->on_client_hello = &cb;
+//        static ptls_on_client_hello_t cb = NULL;
+//        ctx_peer->on_client_hello = &cb;
         static const ptls_iovec_t protocols[] = {{(uint8_t *)"h2", 2}, {(uint8_t *)"http/1.1", 8}};
         client_hs_prop.client.negotiated_protocols.list = protocols;
         client_hs_prop.client.negotiated_protocols.count = PTLS_ELEMENTSOF(protocols);
         ptls_set_server_name(client, server_name, 0);
     }
 
-    static ptls_on_extension_t cb = NULL;
-    ctx_peer->on_extension = &cb;
+//    static ptls_on_extension_t cb = NULL;
+//    ctx_peer->on_extension = &cb;
 
     if (require_client_authentication)
         ctx_peer->require_client_authentication = 1;
@@ -294,6 +294,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
 
 static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, const char *sig_name, size_t n)
 {
+    char p_version[128];
     char certpath[300];
     char privkeypath[300];
     const char *sep = "/"; /*for most systems like linux, macos*/
@@ -319,7 +320,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
     } else {
-        is_oqs_sigint = 1;
+        is_oqs_sig = 1;
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
@@ -354,7 +355,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     int require_client_authentication = 0;
     /* test full handshake, server auth only:
      * mode TEST_HANDSHAKE_1RTT value=0 */
-    int ret = bench_run_handshake(server_name, NULL, 0, 0, 0, require_client_authentication, 0, &t_client, &t_server, n);
+    int ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, 0, require_client_authentication, 0, &t_client, &t_server, n);
     if (ret == 0) {
         printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                basic_ref, provider, p_version, sig_name, (int)n, (double)t_client);
