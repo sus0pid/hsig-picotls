@@ -11,6 +11,8 @@
 #include "oqs_util.h"
 #include "bench_common.h"
 
+ptls_context_t *ctx, *ctx_peer;
+
 static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int mode, int expect_ticket,
                                 int check_ch, int require_client_authentication, int transfer_session,
                                 uint64_t *t_client, uint64_t *t_server, size_t n)
