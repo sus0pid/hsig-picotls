@@ -297,10 +297,11 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
 
     uint64_t t_client = 0;
     uint64_t t_server = 0;
+    int ret;
     int require_client_authentication = 0;
-    /* test full handshake, server auth only:
+    /* full handshake, server authentication
      * mode TEST_HANDSHAKE_1RTT value=0 */
-    int ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, require_client_authentication, 0,
+    ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, require_client_authentication, 0,
                                   &t_client, &t_server, n);
     if (ret == 0) {
         double avg_t_client = (double)t_client / n;  // Average time per signing (in microseconds)
@@ -308,6 +309,19 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
         printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                basic_ref, provider, p_version, sig_name, (int)n, (double)avg_t_client, (double)avg_t_server);
     }
+
+    /* full handshake with mutual authentication */
+    require_client_authentication = 1;
+    ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, require_client_authentication, 0,
+                              &t_client, &t_server, n);
+    if (ret == 0) {
+        double avg_t_client = (double)t_client / n;  // Average time per signing (in microseconds)
+        double avg_t_server = (double)t_server / n;  // Average time per verification (in microseconds)
+        printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+               basic_ref, provider, p_version, sig_name, (int)n, (double)avg_t_client, (double)avg_t_server);
+    }
+
+
     return ret;
 }
 
