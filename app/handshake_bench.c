@@ -149,7 +149,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
 
         /* holds the ptls_t pointer of server prior to migration */
         ptls_t *original_server = server;
-        uint64_t t_s_end = bench_time(); /* server receives client app message */
+
         if (mode != TEST_HANDSHAKE_EARLY_DATA || require_client_authentication) {
             /* send app data */
             ret = ptls_send(client, &cbuf, req, strlen(req));
@@ -211,7 +211,6 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
             cbuf.off = 0;
             decbuf.off = 0;
         }
-        uint64_t t_end = bench_time();
 
         /* original_server is used for the server-side checks because handshake data is never migrated */
         //    ok(!ptls_is_ech_handshake(client, NULL, NULL, NULL));
