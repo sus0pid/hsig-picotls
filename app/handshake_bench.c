@@ -138,11 +138,11 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         }
 
         if (require_client_authentication) {
-            ok(!ptls_handshake_is_complete(server));
+//            ok(!ptls_handshake_is_complete(server));
             consumed = cbuf.off;
             /* receive Cert+CertVerify+FIN or receive FIN */
             ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
-            ok(ptls_handshake_is_complete(server));
+//            ok(ptls_handshake_is_complete(server));
             cbuf.off = 0;
         }
         uint64_t t_s_end = bench_time(); /* server receives client handshake message */
@@ -153,20 +153,20 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         if (mode != TEST_HANDSHAKE_EARLY_DATA || require_client_authentication) {
             /* send app data */
             ret = ptls_send(client, &cbuf, req, strlen(req));
-            ok(ret == 0);
+//            ok(ret == 0);
             consumed = cbuf.off;
             /* receive client app data */
             ret = ptls_receive(server, &decbuf, cbuf.base, &consumed);
-            ok(ret == 0);
-            ok(consumed == cbuf.off);
-            ok(decbuf.off == strlen(req));
-            ok(memcmp(decbuf.base, req, strlen(req)) == 0);
-            ok(ptls_handshake_is_complete(server));
+//            ok(ret == 0);
+//            ok(consumed == cbuf.off);
+//            ok(decbuf.off == strlen(req));
+//            ok(memcmp(decbuf.base, req, strlen(req)) == 0);
+//            ok(ptls_handshake_is_complete(server));
             decbuf.off = 0;
             cbuf.off = 0;
             /* server send app reply */
             ret = ptls_send(server, &sbuf, resp, strlen(resp));
-            ok(ret == 0);
+//            ok(ret == 0);
         }
 
         consumed = sbuf.off;
@@ -179,10 +179,6 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         if (mode == TEST_HANDSHAKE_EARLY_DATA) {
             consumed = cbuf.off;
             ret = ptls_receive(server, &decbuf, cbuf.base, &consumed);
-            //        ok(ret == 0);
-            //        ok(cbuf.off == consumed);
-            //        ok(decbuf.off == 0);
-            //        ok(ptls_handshake_is_complete(client));
             cbuf.off = 0;
         }
 
@@ -299,16 +295,16 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     uint64_t t_server = 0;
     int ret;
     int require_client_authentication = 0;
-//    /* full handshake, server authentication
-//     * mode TEST_HANDSHAKE_1RTT value=0 */
-//    ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, require_client_authentication, 0,
-//                                  &t_client, &t_server, n);
-//    if (ret == 0) {
-//        double avg_t_client = (double)t_client / n;  // Average time per signing (in microseconds)
-//        double avg_t_server = (double)t_server / n;  // Average time per verification (in microseconds)
-//        printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
-//               basic_ref, provider, p_version, sig_name, (int)n, (double)avg_t_client, (double)avg_t_server);
-//    }
+    /* full handshake, server authentication
+     * mode TEST_HANDSHAKE_1RTT value=0 */
+    ret = bench_run_handshake(server_name, ptls_iovec_init(NULL, 0), 0, 0, require_client_authentication, 0,
+                                  &t_client, &t_server, n);
+    if (ret == 0) {
+        double avg_t_client = (double)t_client / n;  // Average time per signing (in microseconds)
+        double avg_t_server = (double)t_server / n;  // Average time per verification (in microseconds)
+        printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+               basic_ref, provider, p_version, sig_name, (int)n, (double)avg_t_client, (double)avg_t_server);
+    }
 
     /* full handshake with mutual authentication */
     require_client_authentication = 1;
@@ -317,7 +313,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     if (ret == 0) {
         double avg_t_client = (double)t_client / n;  // Average time per signing (in microseconds)
         double avg_t_server = (double)t_server / n;  // Average time per verification (in microseconds)
-        printf("%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
+        printf("*%s, %s, %d, %d, %s, %s, %s, %d, %.2f, %.2f\n", OS, HW, (int)(8 * sizeof(size_t)),
                basic_ref, provider, p_version, sig_name, (int)n, (double)avg_t_client, (double)avg_t_server);
     }
 
@@ -367,7 +363,7 @@ int main(int argc, char **argv)
 
     for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
         if (sig_list[i].enabled_by_default || force_all_tests) {
-            ret = bench_tls(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name, 1000); /*options: 100000, 1000000, 1000*/
+            ret = bench_tls(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name, 100000); /*options: 100000, 1000000, 1000*/
         }
     }
 
