@@ -309,6 +309,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
 
     if (strcmp(sig_name, "rsa") == 0 || strcmp(sig_name, "ecdsa") == 0 || strcmp(sig_name, "ed25519") == 0) {
         /* traditional signature algos */
+        is_oqs_sig = 0;
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
         printf("sig_name: %s, is_oqs_sig: %d\n", sig_name, is_oqs_sig);
