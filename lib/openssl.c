@@ -58,6 +58,12 @@
 #ifdef PTLS_HAVE_AEGIS
 #include "./libaegis.h"
 #endif
+#if defined(PTLS_DEBUG) && PTLS_DEBUG
+#define PTLS_DEBUGF(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define PTLS_DEBUGF(...)
+#endif
+
 
 #ifdef _WINDOWS
 #ifndef _CRT_SECURE_NO_WARNINGS
