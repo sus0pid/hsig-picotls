@@ -1072,7 +1072,7 @@ Exit:
 static int do_oqs_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                        ptls_async_job_t **async)
 {
-//    PTLS_DEBUGF("[%s]: call do_oqs_sign for signing handshake transcripts, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: call do_oqs_sign for signing handshake transcripts, %d\n", __func__, __LINE__);
     EVP_MD_CTX *ctx = NULL;
 //    const EVP_MD *md = scheme->scheme_md != NULL ? scheme->scheme_md() : NULL;
     size_t siglen;
@@ -1115,7 +1115,7 @@ Exit:
 static int do_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                    ptls_async_job_t **async)
 {
-//    PTLS_DEBUGF("[%s]: call do_sign for signing handshake transcripts, %d\n", __func__, __LINE__);
+    PTLS_DEBUGF("[%s]: call do traditional sign for signing handshake transcripts, %d\n", __func__, __LINE__);
     EVP_MD_CTX *ctx = NULL;
     const EVP_MD *md = scheme->scheme_md != NULL ? scheme->scheme_md() : NULL;
     EVP_PKEY_CTX *pkey_ctx;
