@@ -272,7 +272,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
     ptls_iovec_t cert;
-    printf("is_oqs_sig: %d, is_hsig_sig: %d\n", is_oqs_sig, is_hsig_sig);
+//    printf("is_oqs_sig: %d, is_hsig_sig: %d\n", is_oqs_sig, is_hsig_sig);
 
     setup_certificate(&cert, certpath);
     setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
@@ -368,7 +368,7 @@ int main(int argc, char **argv)
     printf(
         "OS, HW, bits, 10M ops, provider, version, algorithm, N, client_us, server_us\n");
 
-    for (size_t i = 6; ret == 0 && i < nb_sig_list; i++) {
+    for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
         if (sig_list[i].enabled_by_default || force_all_tests) {
             ret = bench_tls(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name, 1); /*options: 100000, 1000000, 1000*/
         }
