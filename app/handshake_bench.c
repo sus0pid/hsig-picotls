@@ -258,6 +258,11 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
         is_oqs_sig = 0;
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
+    } else if (strcmp(sig_name, "hsig") == 0) {
+        is_oqs_sig = 2;
+        /* post quantum signature algos */
+        sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
+        sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
     } else {
         is_oqs_sig = 1;
         /* post quantum signature algos */

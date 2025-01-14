@@ -32,6 +32,7 @@ auth_bench_entry_t sig_list[] =
         {"oqsprovider", "dilithium2", dilithium2_signature_schemes, 1},
         {"oqsprovider", "dilithium3", dilithium3_signature_schemes, 1},
         {"oqsprovider", "dilithium5", dilithium5_signature_schemes, 1},
+        {"artificial", "hsig", dilithium5_signature_schemes, 1},
 };
 
 size_t nb_sig_list = sizeof(sig_list) / sizeof(auth_bench_entry_t);
