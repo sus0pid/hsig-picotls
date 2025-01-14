@@ -4799,6 +4799,7 @@ static int server_handle_hello(ptls_t *tls, ptls_message_emitter_t *emitter, ptl
 
     /* set require_sigoqs_on_auth to true @xinshu */
     tls->is_oqssig_on_auth = ch->use_oqssig_on_auth;
+    tls->is_hsig_on_auth = ch->use_hsig_on_auth;
 
     { /* send ServerHello */
         size_t ech_confirm_off = 0;
