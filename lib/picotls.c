@@ -70,7 +70,7 @@
 #define PTLS_EXTENSION_TYPE_CERTIFICATE_AUTHORITIES 47
 #define PTLS_EXTENSION_TYPE_KEY_SHARE 51
 #define PTLS_EXTENSION_TYPE_TICKET_REQUEST 58
-#define PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH 60
+#define PTLS_EXTENSION_TYPE_OQS_AUTH_MODES 60
 #define PTLS_EXTENSION_TYPE_ECH_OUTER_EXTENSIONS 0xfd00
 #define PTLS_EXTENSION_TYPE_ENCRYPTED_CLIENT_HELLO 0xfe0d
 
@@ -94,6 +94,7 @@ static const char ech_info_prefix[8] = "tls ech";
 #ifndef PTLS_MAX_EARLY_DATA_SKIP_SIZE
 #define PTLS_MAX_EARLY_DATA_SKIP_SIZE 65536
 #endif
+#define PTLS_DEBUG 1
 #if defined(PTLS_DEBUG) && PTLS_DEBUG
 #define PTLS_DEBUGF(...) fprintf(stderr, __VA_ARGS__)
 #else
@@ -278,7 +279,7 @@ struct st_ptls_t {
     unsigned needs_key_update : 1;
     unsigned key_update_send_request : 1;
     unsigned skip_tracing : 1;
-    unsigned is_oqssig_on_auth : 1; /* is oqssig on auth required @xinshu*/
+    unsigned is_oqssig_on_auth : 2; /* 0-traditional, 1-oqs, 2-test artificial sig, is oqssig on auth required @xinshu*/
     /**
      * misc.
      */
@@ -341,7 +342,7 @@ struct st_ptls_client_hello_t {
     ptls_iovec_t negotiated_groups;
     ptls_iovec_t key_shares;
     /* client send oqs signature requirement via extension @xinshu */
-    unsigned use_oqssig_on_auth: 1;
+    unsigned use_oqssig_on_auth: 2;
     struct st_ptls_signature_algorithms_t signature_algorithms;
     ptls_iovec_t server_name;
     struct {
@@ -2254,8 +2255,10 @@ static int encode_client_hello(ptls_context_t *ctx, ptls_buffer_t *sendbuf, enum
             });
             /* push require oqs signature scheme in cert&&certverify @xinshu*/
             if (ctx->require_oqssig_on_auth) {
-                PTLS_DEBUGF("[%s]: push require_oqssig in extension, %d\n", __func__, __LINE__);
-                buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH, {});
+                PTLS_DEBUGF("[%s]: push require_oqssig(%u) in extension, %d\n", __func__, ctx->require_oqssig_on_auth, __LINE__);
+                buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_OQS_AUTH_MODES, {
+                   ptls_buffer_push(sendbuf, ctx->require_oqssig_on_auth);
+                });
             }
             if (ctx->key_exchanges != NULL) {
                 buffer_push_extension(sendbuf, PTLS_EXTENSION_TYPE_SUPPORTED_GROUPS, {
@@ -3759,9 +3762,9 @@ static int decode_client_hello(ptls_context_t *ctx, struct st_ptls_client_hello_
             PTLS_DEBUGF("[%s]: number of decoded signature algorithms: %d, line@%d\n", __func__, ch->signature_algorithms.count, __LINE__);
             break;
             /* decode require_oqssig_on_auth extension @xinshu */
-        case PTLS_EXTENSION_TYPE_OQS_SIGNATURE_AUTH:
-            PTLS_DEBUGF("[%s]: server get oqs signature indicator, line@%d\n", __func__, __LINE__);
-            ch->use_oqssig_on_auth = 1;
+        case PTLS_EXTENSION_TYPE_OQS_AUTH_MODES:
+            ptls_decode8(&ch->use_oqssig_on_auth, &src, end);
+            PTLS_DEBUGF("[%s]: server get oqs signature indicator(%u), line@%d\n", __func__, ch->use_oqssig_on_auth, __LINE__);
             break;
         case PTLS_EXTENSION_TYPE_KEY_SHARE:
             ch->key_shares = ptls_iovec_init(src, end - src);
