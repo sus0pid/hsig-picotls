@@ -879,7 +879,7 @@ struct st_ptls_context_t {
     /* require oqs cert & certverify on both sides,
      * tell sign_certificate() callback function when signing handshake transcript & verify certverify from server
      * tell server to receive oqs cert&certverify @xinshu*/
-    unsigned require_oqssig_on_auth : 1;
+    unsigned require_oqssig_on_auth : 2;
     /**
      * External pre-shared key used for mutual authentication. Unless when using PSK, all the fields must be set to NULL / 0.
      */
