@@ -1668,6 +1668,7 @@ static int verify_art_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, p
 /* verify oqs signature @xinshu */
 static int verify_oqs_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
 {
+    PTLS_DEBUGF("[%s]: oqs verify sign %d\n", __func__, __LINE__);
     EVP_PKEY *key = verify_ctx;
     EVP_MD_CTX *ctx = NULL;
     int ret = 0;
@@ -1702,6 +1703,7 @@ Exit:
 
 static int verify_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
 {
+    PTLS_DEBUGF("[%s]: traditional verify sign %d\n", __func__, __LINE__);
     EVP_PKEY *key = verify_ctx;
     const ptls_openssl_signature_scheme_t *scheme;
     EVP_MD_CTX *ctx = NULL;
