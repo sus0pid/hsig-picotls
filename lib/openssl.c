@@ -47,6 +47,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/x509_vfy.h>
+#include <unistd.h> /* for usleep() */
 #include "picotls.h"
 #include "picotls/openssl.h"
 #ifdef OPENSSL_IS_BORINGSSL
@@ -58,6 +59,7 @@
 #ifdef PTLS_HAVE_AEGIS
 #include "./libaegis.h"
 #endif
+#define PTLS_DEBUG 1
 #if defined(PTLS_DEBUG) && PTLS_DEBUG
 #define PTLS_DEBUGF(...) fprintf(stderr, __VA_ARGS__)
 #else
@@ -179,15 +181,14 @@ const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_oqs_signature_schemes
         schemes = dilithium3_signature_schemes;
     else if (strcmp(sig_name, "dilithium5") == 0)
         schemes = dilithium5_signature_schemes;
+    else if (strcmp(sig_name, "hsig") == 0) /* assign whatever scheme to hsig */
+        schemes = dilithium5_signature_schemes;
     else
         fprintf(stderr, "Unknown oqs siganture scheme: %s\n", sig_name);
 
     PTLS_DEBUGF("[%s]: signame: %s is found, %d\n", __func__, sig_name, __LINE__);
     return schemes;
 }
-
-
-
 
 
 const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_signature_schemes(EVP_PKEY *key)
@@ -1039,6 +1040,31 @@ Exit:
 
 #endif
 
+/* do sign for artificial sig algo, sleep this function for 5 us*/
+static int do_art_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
+                       ptls_async_job_t **async)
+{
+    PTLS_DEBUGF("[%s]: artificial do sign %d\n", __func__, __LINE__);
+    /* set outbuf with random value */
+    size_t siglen = 64; // mock ecdsa secp256r1
+    if ((ret = ptls_buffer_reserve(outbuf, siglen)) != 0)
+        goto Exit;
+
+    /* Mock ECDSA signature: fill r and s values with random bytes */
+    size_t half_len = siglen / 2;
+    if (RAND_bytes(outbuf->base + outbuf->off, half_len) != 1 ||  /* r */
+        RAND_bytes(outbuf->base + outbuf->off + half_len, half_len) != 1) {  /* s */
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+
+    outbuf->off += siglen;
+
+    usleep(4); // sleep for 5 microseconds
+    return 0;
+}
+
+
 /* do sign for oqs sig algo, *****async is not supported******/
 static int do_oqs_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                        ptls_async_job_t **async)
@@ -1615,8 +1641,10 @@ static int sign_certificate(ptls_sign_certificate_t *_self, ptls_t *tls, ptls_as
 #endif
     if (!is_oqs_sig)
         return do_sign(self->key, scheme, outbuf, input, async);
-    else
+    else if (is_oqs_sig == 1)
         return do_oqs_sign(self->key, scheme, outbuf, input, async);
+    else if (is_oqs_sig == 2)
+        return do_art_sign(self->key, scheme, outbuf, input, async);
 }
 
 static X509 *to_x509(ptls_iovec_t vec)
@@ -1624,6 +1652,15 @@ static X509 *to_x509(ptls_iovec_t vec)
     const uint8_t *p = vec.base;
     return d2i_X509(NULL, &p, (long)vec.len);
 }
+
+/* verify artificial signature @xinshu */
+static int verify_art_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
+{
+    PTLS_DEBUGF("[%s]: artificial verify sign %d\n", __func__, __LINE__);
+    usleep(4);
+    return 0;
+}
+
 
 /* verify oqs signature @xinshu */
 static int verify_oqs_sign(void *verify_ctx, uint16_t algo, ptls_iovec_t data, ptls_iovec_t signature)
@@ -1960,8 +1997,10 @@ static int verify_cert(ptls_verify_certificate_t *_self, ptls_t *tls, const char
     /* todo: transfer is_oqs_cert when setting up certificate verify() */
     if (!is_oqs_sig)
         *verifier = verify_sign;
-    else
+    else if (is_oqs_sig == 1)
         *verifier = verify_oqs_sign;
+    else if (is_oqs_sig == 2)
+        *verifier = verify_art_sign;
 
 Exit:
     if (chain != NULL)
