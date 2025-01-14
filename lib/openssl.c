@@ -59,7 +59,7 @@
 #ifdef PTLS_HAVE_AEGIS
 #include "./libaegis.h"
 #endif
-#define PTLS_DEBUG 1
+//#define PTLS_DEBUG 1
 #if defined(PTLS_DEBUG) && PTLS_DEBUG
 #define PTLS_DEBUGF(...) fprintf(stderr, __VA_ARGS__)
 #else

@@ -95,7 +95,7 @@ static const char ech_info_prefix[8] = "tls ech";
 #ifndef PTLS_MAX_EARLY_DATA_SKIP_SIZE
 #define PTLS_MAX_EARLY_DATA_SKIP_SIZE 65536
 #endif
-#define PTLS_DEBUG 1
+//#define PTLS_DEBUG 1
 #if defined(PTLS_DEBUG) && PTLS_DEBUG
 #define PTLS_DEBUGF(...) fprintf(stderr, __VA_ARGS__)
 #else
