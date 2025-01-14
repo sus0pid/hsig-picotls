@@ -1044,6 +1044,7 @@ Exit:
 static int do_art_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                        ptls_async_job_t **async)
 {
+    int ret;
     PTLS_DEBUGF("[%s]: artificial do sign %d\n", __func__, __LINE__);
     /* set outbuf with random value */
     size_t siglen = 64; // mock ecdsa secp256r1
@@ -1061,7 +1062,9 @@ static int do_art_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *sch
     outbuf->off += siglen;
 
     usleep(4); // sleep for 5 microseconds
-    return 0;
+    ret = 0;
+Exit:
+    return ret;
 }
 
 
