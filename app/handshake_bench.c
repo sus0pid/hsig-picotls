@@ -260,9 +260,9 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
     } else if (strcmp(sig_name, "hsig") == 0) {
         is_hsig_sig = 1;
-        /* post quantum signature algos */
-        sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
-        sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
+        /* use traditional signature algos cert&key */
+        sprintf(certpath, "%s%s%s%s", certsdir, "ecdsa", sep, "cert.pem");
+        sprintf(privkeypath, "%s%s%s%s", certsdir, "ecdsa", sep, "key.pem");
     } else {
         is_oqs_sig = 1;
         /* post quantum signature algos */
@@ -272,6 +272,7 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
     ptls_iovec_t cert;
+    printf("is_oqs_sig: %d, is_hsig_sig: %d\n", is_oqs_sig, is_hsig_sig);
 
     setup_certificate(&cert, certpath);
     setup_private_key(&openssl_sign_certificate, privkeypath, sig_name, is_oqs_sig);
@@ -296,7 +297,6 @@ static int bench_tls(char *OS, char *HW, int basic_ref, const char *provider, co
     ctx = ctx_peer = &openssl_ctx;
     ctx->require_oqssig_on_auth = is_oqs_sig; /* oqs auth enabled at client side */
     ctx->require_hsig_on_auth = is_hsig_sig;
-    printf("is_oqs_sig: %d, is_hsig_sig: %d\n", is_oqs_sig, is_hsig_sig);
 
     uint64_t t_client = 0;
     uint64_t t_server = 0;
