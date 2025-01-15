@@ -25,8 +25,9 @@ enum Sig_schemes {
     SIG_DILITHIUM2, //0
     SIG_DILITHIUM3, //1
     SIG_DILITHIUM5, //2
-    SIG_RSA,        //3
-    SIG_ECDSA,      //4
+    SIG_HSIG,       //3
+    SIG_RSA,        //4
+    SIG_ECDSA,      //5
     SIG_SCHEMES_COUNT
 };
 
@@ -34,6 +35,7 @@ static const char *sig_names[] __attribute__((unused)) = {
     [SIG_DILITHIUM2] = "dilithium2",
     [SIG_DILITHIUM3] = "dilithium3",
     [SIG_DILITHIUM5] = "dilithium5",
+    [SIG_HSIG] = "hsig",
     [SIG_RSA] = "rsa",
     [SIG_ECDSA] = "ecdsa",
 };
@@ -204,6 +206,8 @@ static const char input_file_is_benchmark[] = "is:benchmark";
 //    fwrite(ech.retry.configs.base, 1, ech.retry.configs.len, fp);
 //    fclose(fp);
 //}
+
+
 
 
 
