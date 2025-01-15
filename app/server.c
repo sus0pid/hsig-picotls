@@ -30,6 +30,113 @@
 #include "picotls/openssl.h"
 #include "utilities.h"
 
+static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const char *server_name, const char *input_file,
+                                        ptls_handshake_properties_t *hsprop)
+{
+    ptls_t *tls = ptls_new(ctx, 1);
+    ptls_buffer_t rbuf, encbuf, ptbuf;
+    enum { IN_HANDSHAKE, IN_1RTT, IN_SHUTDOWN } state = IN_HANDSHAKE;
+    int ret = 0;
+    ssize_t ioret;
+    size_t early_bytes_sent = 0;
+    uint64_t start_at = ctx->get_time->cb(ctx->get_time);
+    const char *hello_msg = "hello world\n";
+    const size_t hello_msg_len = strlen(hello_msg);
+    size_t reply_received = 0;
+
+    ptls_buffer_init(&rbuf, "", 0);
+    ptls_buffer_init(&encbuf, "", 0);
+    ptls_buffer_init(&ptbuf, "", 0);
+
+    fcntl(sockfd, F_SETFL, O_NONBLOCK);
+
+    while (1) {
+        /* check if data is available */
+        fd_set readfds, writefds, exceptfds;
+        int maxfd = sockfd + 1;
+        struct timeval timeout;
+        FD_ZERO(&readfds);
+        FD_ZERO(&writefds);
+        FD_ZERO(&exceptfds);
+        FD_SET(sockfd, &readfds);
+        FD_SET(sockfd, &writefds);
+        FD_SET(sockfd, &exceptfds);
+        timeout.tv_sec = 3600;
+        timeout.tv_usec = 0;
+
+        if (select(maxfd, &readfds, &writefds, &exceptfds, &timeout) == -1)
+            continue;
+
+        /* consume incoming messages */
+        if (FD_ISSET(sockfd, &readfds) || FD_ISSET(sockfd, &exceptfds)) {
+            char bytebuf[16384];
+            size_t off = 0, leftlen;
+            while ((ioret = read(sockfd, bytebuf, sizeof(bytebuf))) == -1 && errno == EINTR)
+                ;
+            if (ioret <= 0)
+                goto Exit;
+            while ((leftlen = ioret - off) != 0) {
+                if (state == IN_HANDSHAKE) {
+                    if ((ret = ptls_handshake(tls, &encbuf, bytebuf + off, &leftlen, hsprop)) == 0) {
+                        state = IN_1RTT;
+                        fprintf(stderr, "Handshake completed\n");
+
+                        /* Send "hello world" message to client */
+                        if ((ret = ptls_send(tls, &encbuf, hello_msg, hello_msg_len)) != 0) {
+                            fprintf(stderr, "Failed to send hello message: %d\n", ret);
+                            goto Exit;
+                        }
+                    } else if (ret == PTLS_ERROR_IN_PROGRESS) {
+                        /* handshake is in progress */
+                    } else {
+                        fprintf(stderr, "ptls_handshake error: %d\n", ret);
+                        goto Exit;
+                    }
+                } else {
+                    if ((ret = ptls_receive(tls, &rbuf, bytebuf + off, &leftlen)) == 0) {
+                        if (rbuf.off != 0) {
+                            reply_received = rbuf.off;
+                            fprintf(stderr, "Received reply from client: %.*s\n", (int)rbuf.off, rbuf.base);
+                            rbuf.off = 0;
+                        }
+                    } else if (ret == PTLS_ERROR_IN_PROGRESS) {
+                        /* receiving is in progress */
+                    } else {
+                        fprintf(stderr, "ptls_receive error: %d\n", ret);
+                        goto Exit;
+                    }
+                }
+                off += leftlen;
+            }
+        }
+
+        /* send any data (app message or handshake message) back to client */
+        if (encbuf.off != 0) {
+            while ((ioret = write(sockfd, encbuf.base, encbuf.off)) == -1 && errno == EINTR)
+                ;
+            if (ioret <= 0)
+                goto Exit;
+            shift_buffer(&encbuf, ioret);
+        }
+
+        if (state == IN_1RTT && reply_received > 0) {
+            fprintf(stderr, "Exiting after successful message exchange\n");
+            break; /* Exit after receiving a reply */
+        }
+    }
+
+Exit:
+    if (sockfd != -1)
+        close(sockfd);
+    ptls_buffer_dispose(&rbuf);
+    ptls_buffer_dispose(&encbuf);
+    ptls_buffer_dispose(&ptbuf);
+    ptls_free(tls);
+
+    return ret != 0;
+}
+
+
 static int handle_connection(int sockfd, ptls_context_t *ctx, const char *server_name, const char *input_file,
                              ptls_handshake_properties_t *hsprop)
 {
@@ -106,8 +213,13 @@ static int handle_connection(int sockfd, ptls_context_t *ctx, const char *server
                 if (state == IN_HANDSHAKE) {
                     if ((ret = ptls_handshake(tls, &encbuf, bytebuf + off, &leftlen, hsprop)) == 0) {
                         state = IN_1RTT;
+                        fprintf(stderr, "Handhske completed\n");
+//                        /* Send "hello world" message to client */
+//                        if ((ret = ptls_send(tls, &encbuf, hello_msg, hello_msg_len)) != 0) {
+//                            fprintf(stderr, "Failed to send hello message: %d\n", ret);
+//                            goto Exit;
+//                        }
                         assert(ptls_is_server(tls) || hsprop->client.early_data_acceptance != PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN);
-                        //                        ech_save_retry_configs();
                         /* release data sent as early-data, if server accepted it */
                         if (hsprop->client.early_data_acceptance == PTLS_EARLY_DATA_ACCEPTED)
                             shift_buffer(&ptbuf, early_bytes_sent);
@@ -116,7 +228,6 @@ static int handle_connection(int sockfd, ptls_context_t *ctx, const char *server
                     } else {
                         if (ret == PTLS_ALERT_ECH_REQUIRED) {
                             assert(!ptls_is_server(tls));
-                            //                            ech_save_retry_configs();
                         }
                         if (encbuf.off != 0)
                             repeat_while_eintr(write(sockfd, encbuf.base, encbuf.off), { break; });
@@ -130,18 +241,11 @@ static int handle_connection(int sockfd, ptls_context_t *ctx, const char *server
                             data_received += rbuf.off;
                             if (input_file != input_file_is_benchmark)
                                 repeat_while_eintr(write(1, rbuf.base, rbuf.off), { goto Exit; });
-
                             if ((ret = ptls_buffer_reserve(&ptbuf, block_size)) != 0)
                                 goto Exit;
-                            /*check if it's early data*/
-                            //                            if (memcmp(rbuf.base, req, rbuf.off) == 0) { /*receive early data*/
-                            if (app_message_recv == 1) { /*reply to first app data*/
-                                memcpy(ptbuf.base, resp, strlen(resp));
-                                ptbuf.off = strlen(resp);
-                            } else { /* echo back to client */
-                                memcpy(ptbuf.base, rbuf.base, rbuf.off);
-                                ptbuf.off = rbuf.off;
-                            }
+                            /*reply to app message with resp */
+                            memcpy(ptbuf.base, resp, strlen(resp));
+                            ptbuf.off = strlen(resp);
                             rbuf.off = 0;
                         }
                     } else if (ret == PTLS_ERROR_IN_PROGRESS) {
@@ -205,7 +309,7 @@ static int handle_connection(int sockfd, ptls_context_t *ctx, const char *server
             }
         }
 
-        /* send any data */
+        /* send any data (app message or handshake message) back to client*/
         if (encbuf.off != 0) {
             while ((ioret = write(sockfd, encbuf.base, encbuf.off)) == -1 && errno == EINTR)
                 ;
@@ -271,7 +375,8 @@ int run_server(const char* host, const char* port, ptls_context_t *ctx, ptls_han
     while (1) {
         fprintf(stderr, "waiting for connections\n");
         if ((conn_fd = accept(listen_fd, NULL, 0)) != -1)
-            handle_connection(conn_fd, ctx, NULL, NULL, server_hs_prop);
+//            handle_connection(conn_fd, ctx, NULL, NULL, server_hs_prop);
+        handle_connection_with_hello(conn_fd, ctx, NULL, NULL, server_hs_prop); /* server send hello to client after handshake */
     }
 }
 
@@ -324,7 +429,7 @@ int main(int argc, char **argv) {
         goto Exit;
     }
 
-    int ch, is_oqs_auth = 0, is_mutual_auth = 0;
+    int ch, is_oqs_auth = 0, is_mutual_auth = 0, is_hsig_auth = 0;
     while ((ch = getopt(argc, argv, "mh")) != -1) {
         switch (ch) {
         case 'm':
@@ -358,20 +463,27 @@ int main(int argc, char **argv) {
     char *certsdir = "assets/";
 
     /* for simplicity, client and server share the same pair of cert&pkey */
-    if (sig_index > 2)
+    if (sig_index > 3)
     {
         /* traditional signature algos */
         printf("is_oqs_auth = %d\n", is_oqs_auth);
         sprintf(certpath, "%s%s%s%s", certsdir, sig_name, sep, "cert.pem");
         sprintf(privkeypath, "%s%s%s%s", certsdir, sig_name, sep, "key.pem");
     }
-    else
+    else if (sig_index < 3)
     {
         is_oqs_auth = 1;
         printf("is_oqs_auth = %d\n", is_oqs_auth);
         /* post quantum signature algos */
         sprintf(certpath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.crt");
         sprintf(privkeypath, "%s%s%s%s%s", certsdir, sig_name, sep, sig_name, "_srv.key");
+    }
+    else
+    {
+        is_hsig_auth = 1;
+        /* use traditional signature algos cert&key for hsig */
+        sprintf(certpath, "%s%s%s%s", certsdir, "ecdsa", sep, "cert.pem");
+        sprintf(privkeypath, "%s%s%s%s", certsdir, "ecdsa", sep, "key.pem");
     }
     ptls_openssl_sign_certificate_t openssl_sign_certificate;
     ptls_openssl_verify_certificate_t openssl_verify_certificate;
