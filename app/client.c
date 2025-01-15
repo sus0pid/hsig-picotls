@@ -158,7 +158,6 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
                 } else {
                     if ((ret = ptls_receive(client, &rbuf, bytebuf + off, &leftlen)) == 0) {
                         if (rbuf.off != 0) {
-                            data_received += rbuf.off;
                             printf("Client received message: %.*s\n", (int)rbuf.off, rbuf.base);
 
                             // Check if the received message is "hello world\n"
