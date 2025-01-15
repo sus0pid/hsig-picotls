@@ -45,8 +45,10 @@ static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *s
             }
             if (!is_oqs_sig)
                 ret = do_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
-            else
+            else if (is_oqs_sig == 1)
                 ret = do_oqs_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
+            else if (is_oqs_sig == 2)
+                ret = do_art_sign(key, schemes, &sigbuf, ptls_iovec_init(message, message_len), NULL);
             if (ret != 0) {
                 fprintf(stderr, "do_sign failed at iteration %zu\n", k + i);
                 goto Cleanup;
@@ -61,9 +63,12 @@ static int bench_run_one(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *s
             if (!is_oqs_sig)
                 ret = verify_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
                               ptls_iovec_init(sigbuf.base, sigbuf.off));
-            else
+            else if (is_oqs_sig == 1)
                 ret = verify_oqs_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
                                   ptls_iovec_init(sigbuf.base, sigbuf.off));
+            else if (is_oqs_sig == 2)
+                ret = verify_art_sign(key, schemes[0].scheme_id, ptls_iovec_init(message, message_len),
+                                      ptls_iovec_init(sigbuf.base, sigbuf.off));
             if (ret != 0) {
                 fprintf(stderr, "verify_sign failed at iteration %zu\n", k + i);
                 goto Cleanup;
@@ -181,6 +186,19 @@ static int bench_sign_verify(char *OS, char *HW, int basic_ref, const char *prov
             fprintf(stderr, "Failed to generate Dilithium key.\n");
         EVP_PKEY_CTX_free(pctx);
     }
+    else if (strcmp(sig_name, "hsig") == 0) {
+        is_oqs_sig = 2;
+        EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, "dilithium2", NULL);
+        if (pctx == NULL || EVP_PKEY_keygen_init(pctx) <= 0) {
+            fprintf(stderr, "Failed to initialize Dilithium keygen context.\n");
+            EVP_PKEY_CTX_free(pctx);
+            exit(1);
+        }
+        if (EVP_PKEY_generate(pctx, &pkey) <= 0)
+            fprintf(stderr, "Failed to generate Dilithium key.\n");
+        EVP_PKEY_CTX_free(pctx);
+    }
+
 
     if (pkey == NULL || schemes == NULL) {
         ret = PTLS_ERROR_NO_MEMORY;
