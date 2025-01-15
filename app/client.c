@@ -342,7 +342,6 @@ int main(int argc, char **argv) {
 
     char certpath[300];
     char privkeypath[300];
-    char capath[300];
     const char *sep = "/"; /*for most systems like linux, macos*/
     char *certsdir = "assets/";
 
@@ -398,7 +397,6 @@ int main(int argc, char **argv) {
     /* setup log*/
 
     /* run client TODO: set the arguments*/
-    double a, b;
     return run_one_client(host, port, &ctx, server_name, NULL, &client_hs_prop);
 
 
