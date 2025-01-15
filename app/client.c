@@ -39,13 +39,15 @@ char *input_file = NULL;
 unsigned enable_bench_setting = 0;
 
 static int run_one_client(const char* host, const char *port, ptls_context_t *ctx, const char *server_name,
-                          const char *input_file)
+                          const char *input_file, ptls_handshake_properties_t *client_hsprop)
 {
     uint64_t t_hs_start, t_appmsg_received;
     uint64_t t_client_hs;
     static const int inputfd_is_benchmark = -2;
     enum { IN_HANDSHAKE, IN_1RTT, IN_SHUTDOWN } state = IN_HANDSHAKE;
     int inputfd = 0, ret = 0;
+    ssize_t ioret;
+    size_t early_bytes_sent = 0;
     const char *hello_msg = "hello world\n";
     const size_t hello_msg_len = strlen(hello_msg);
     /* configure ptls client */
@@ -79,7 +81,7 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
     }
 
     if (input_file == input_file_is_benchmark) {
-        if (!ptls_is_server(tls))
+        if (!ptls_is_server(client))
             inputfd = inputfd_is_benchmark;
     } else if (input_file != NULL) {
         if ((inputfd = open(input_file, O_RDONLY)) == -1) {
@@ -91,7 +93,7 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
 
     ptls_set_server_name(client, server_name, 0);
     t_hs_start = bench_time();
-    if ((ret = ptls_handshake(client, &encbuf, NULL, NULL, client_hs_prop)) != PTLS_ERROR_IN_PROGRESS) {
+    if ((ret = ptls_handshake(client, &encbuf, NULL, NULL, client_hsprop)) != PTLS_ERROR_IN_PROGRESS) {
         fprintf(stderr, "ptls_handshake:%d\n", ret);
         ret = 1;
         goto Exit;
@@ -136,17 +138,17 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
             }
             while ((leftlen = ioret - off) != 0) {
                 if (state == IN_HANDSHAKE) {
-                    if ((ret = ptls_handshake(tls, &encbuf, bytebuf + off, &leftlen, hsprop)) == 0) {
+                    if ((ret = ptls_handshake(client, &encbuf, bytebuf + off, &leftlen, client_hsprop)) == 0) {
                         state = IN_1RTT;
-                        assert(ptls_is_server(tls) || hsprop->client.early_data_acceptance != PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN);
+                        assert(ptls_is_server(client) || client_hsprop->client.early_data_acceptance != PTLS_EARLY_DATA_ACCEPTANCE_UNKNOWN);
                         /* release data sent as early-data, if server accepted it */
-                        if (hsprop->client.early_data_acceptance == PTLS_EARLY_DATA_ACCEPTED)
+                        if (client_hsprop->client.early_data_acceptance == PTLS_EARLY_DATA_ACCEPTED)
                             shift_buffer(&ptbuf, early_bytes_sent);
                     } else if (ret == PTLS_ERROR_IN_PROGRESS) {
                         /* ok */
                     } else {
                         if (ret == PTLS_ALERT_ECH_REQUIRED) {
-                            assert(!ptls_is_server(tls));
+                            assert(!ptls_is_server(client));
                         }
                         if (encbuf.off != 0)
                             repeat_while_eintr(write(sockfd, encbuf.base, encbuf.off), { break; });
@@ -154,7 +156,7 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
                         goto Exit;
                     }
                 } else {
-                    if ((ret = ptls_receive(tls, &rbuf, bytebuf + off, &leftlen)) == 0) {
+                    if ((ret = ptls_receive(client, &rbuf, bytebuf + off, &leftlen)) == 0) {
                         if (rbuf.off != 0) {
                             data_received += rbuf.off;
                             printf("Client received message: %.*s\n", (int)rbuf.off, rbuf.base);
@@ -227,21 +229,21 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
         if (ptbuf.off != 0) {
             if (state == IN_HANDSHAKE) {
                 size_t send_amount = 0;
-                if (server_name != NULL && hsprop->client.max_early_data_size != NULL) {
-                    size_t max_can_be_sent = *hsprop->client.max_early_data_size;
+                if (server_name != NULL && client_hsprop->client.max_early_data_size != NULL) {
+                    size_t max_can_be_sent = *client_hsprop->client.max_early_data_size;
                     if (max_can_be_sent > ptbuf.off)
                         max_can_be_sent = ptbuf.off;
                     send_amount = max_can_be_sent - early_bytes_sent;
                 }
                 if (send_amount != 0) {
-                    if ((ret = ptls_send(tls, &encbuf, ptbuf.base, send_amount)) != 0) {
+                    if ((ret = ptls_send(client, &encbuf, ptbuf.base, send_amount)) != 0) {
                         fprintf(stderr, "ptls_send(early_data):%d\n", ret);
                         goto Exit;
                     }
                     early_bytes_sent += send_amount;
                 }
             } else {
-                if ((ret = ptls_send(tls, &encbuf, ptbuf.base, ptbuf.off)) != 0) {
+                if ((ret = ptls_send(client, &encbuf, ptbuf.base, ptbuf.off)) != 0) {
                     fprintf(stderr, "ptls_send(1rtt):%d\n", ret);
                     goto Exit;
                 }
@@ -389,15 +391,16 @@ int main(int argc, char **argv) {
                           .ech = {.client = {NULL}, .server = {NULL}}, /* ech is disabled */
                           .sign_certificate = &openssl_sign_certificate.super,
                           .verify_certificate = &openssl_verify_certificate.super,
+                          .require_oqssig_on_auth = is_oqs_auth,/* oqs auth enabled at client side */
+                          .require_hsig_on_auth = is_hsig_auth,/* hsig auth enabled at client side */
     };
     ptls_handshake_properties_t client_hs_prop = {{{{NULL}}}};
-    ctx->require_oqssig_on_auth = is_oqs_auth; /* oqs auth enabled at client side */
-    ctx->require_hsig_on_auth = is_hsig_auth; /* hsig auth enabled at client side */
+
     /* setup log*/
 
     /* run client TODO: set the arguments*/
     double a, b;
-    return run_one_client(host, port, &ctx, &client_hs_prop, server_name, NULL);
+    return run_one_client(host, port, &ctx, server_name, NULL, &client_hs_prop);
 
 
 Exit:
