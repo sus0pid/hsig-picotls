@@ -127,7 +127,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
 
         consumed = sbuf.off;
         /* receive ServerHello+EE+FIN
-     * send Cert+CertVerify+FIN or send FIN*/
+        * send Cert+CertVerify+FIN or send FIN*/
         ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
 
         if (expect_ticket) {
