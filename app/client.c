@@ -93,6 +93,7 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
 
     ptls_set_server_name(client, server_name, 0);
     t_hs_start = bench_time();
+    printf("t_hs_start: %.2f\n", t_hs_start);
     if ((ret = ptls_handshake(client, &encbuf, NULL, NULL, client_hsprop)) != PTLS_ERROR_IN_PROGRESS) {
         fprintf(stderr, "ptls_handshake:%d\n", ret);
         ret = 1;
@@ -166,6 +167,7 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
                                 t_appmsg_received = bench_time();
                                 printf("Hello message received, shutting down connection.\n");
                                 t_client_hs = t_appmsg_received - t_hs_start;
+                                printf("t_hs_start: %.2f\n", t_appmsg_received);
                                 printf("Time cost: %.2f us\n", t_client_hs);
 
                                 // Send a close notify alert to the server
