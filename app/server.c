@@ -380,8 +380,8 @@ int run_server(const char* host, const char* port, ptls_context_t *ctx, ptls_han
         fprintf(stderr, "waiting for connections\n");
         if ((conn_fd = accept(listen_fd, NULL, 0)) != -1) {
             fprintf(stderr, "receiving connection request...\n");
-            handle_connection(conn_fd, ctx, NULL, NULL, server_hs_prop);
-//            handle_connection_with_hello(conn_fd, ctx, NULL, NULL, server_hs_prop); /* server send hello to client after handshake */
+            handle_connection_with_hello(conn_fd, ctx, NULL, NULL, server_hs_prop); /* server send hello to client after handshake */
+//            handle_connection(conn_fd, ctx, NULL, NULL, server_hs_prop);
         }
     }
 }
