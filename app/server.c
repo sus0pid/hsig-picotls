@@ -69,14 +69,17 @@ static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const c
 
         /* consume incoming messages */
         if (FD_ISSET(sockfd, &readfds) || FD_ISSET(sockfd, &exceptfds)) {
+            printf("consuming incoming messages\n");
             char bytebuf[16384];
             size_t off = 0, leftlen;
             while ((ioret = read(sockfd, bytebuf, sizeof(bytebuf))) == -1 && errno == EINTR)
                 ;
+            printf("tcp read done.\n");
             if (ioret <= 0)
                 goto Exit;
             while ((leftlen = ioret - off) != 0) {
                 if (state == IN_HANDSHAKE) {
+                    printf("start process client hello\n");
                     if ((ret = ptls_handshake(tls, &encbuf, bytebuf + off, &leftlen, hsprop)) == 0) {
                         state = IN_1RTT;
                         fprintf(stderr, "Handshake completed\n");
@@ -88,6 +91,7 @@ static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const c
                         }
                     } else if (ret == PTLS_ERROR_IN_PROGRESS) {
                         /* handshake is in progress */
+                        fprintf(stderr, "handshake in progress... %d\n", ret);
                     } else {
                         fprintf(stderr, "ptls_handshake error: %d\n", ret);
                         goto Exit;
@@ -375,6 +379,7 @@ int run_server(const char* host, const char* port, ptls_context_t *ctx, ptls_han
     while (1) {
         fprintf(stderr, "waiting for connections\n");
         if ((conn_fd = accept(listen_fd, NULL, 0)) != -1) {
+            fprintf(stderr, "receiving connection request...\n");
             handle_connection_with_hello(conn_fd, ctx, NULL, NULL, server_hs_prop); /* server send hello to client after handshake */
         }
 //            handle_connection(conn_fd, ctx, NULL, NULL, server_hs_prop);

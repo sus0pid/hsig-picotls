@@ -126,6 +126,7 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
 
         /* consume incoming messages */
         if (FD_ISSET(sockfd, &readfds) || FD_ISSET(sockfd, &exceptfds)) {
+            printf(">> consume incoming messages, line%d\n", __LINE__);
             char bytebuf[16384];
             size_t off = 0, leftlen;
             while ((ioret = read(sockfd, bytebuf, sizeof(bytebuf))) == -1 && errno == EINTR)
