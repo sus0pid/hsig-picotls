@@ -250,6 +250,19 @@ static int run_one_client(const char* host, const char *port, ptls_context_t *ct
                 ptbuf.off = 0;
             }
         }
+
+        /* send any data */
+        if (encbuf.off != 0) {
+            while ((ioret = write(sockfd, encbuf.base, encbuf.off)) == -1 && errno == EINTR)
+                ;
+            if (ioret == -1 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+                /* no data */
+            } else if (ioret <= 0) {
+                goto Exit;
+            } else {
+                shift_buffer(&encbuf, ioret);
+            }
+        }
     }
 
 Exit:
