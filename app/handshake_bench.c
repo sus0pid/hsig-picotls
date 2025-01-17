@@ -75,6 +75,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         ptls_set_server_name(client, server_name, 0);
         /* send ClientHello */
         ret = ptls_handshake(client, &cbuf, NULL, NULL, &client_hs_prop);
+        printf("ret of ptls_handshake(client) = %d, %d\n", ret, __LINE__);
 
         switch (mode) {
         case TEST_HANDSHAKE_2RTT:
@@ -103,6 +104,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         consumed = cbuf.off;
         /* receive ClientHello and send ServerHello+EE+FIN */
         ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
+        printf("ret of ptls_handshake(server) = %d, %d\n", ret, __LINE__);
 
         if (mode == TEST_HANDSHAKE_EARLY_DATA && !require_client_authentication) {
             memmove(cbuf.base, cbuf.base + consumed, cbuf.off - consumed);
@@ -121,14 +123,17 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         while (ret == PTLS_ERROR_ASYNC_OPERATION) {
             consumed = sbuf.off;
             ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
+            printf("ret of ptls_handshake(client) = %d, %d\n", ret, __LINE__);
             sbuf.off = 0;
             ret = ptls_handshake(server, &sbuf, NULL, NULL, &server_hs_prop);
+            printf("ret of ptls_handshake(server) = %d, %d\n", ret, __LINE__);
         }
 
         consumed = sbuf.off;
         /* receive ServerHello+EE+FIN
         * send Cert+CertVerify+FIN or send FIN*/
         ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
+        printf("ret of ptls_handshake(client) = %d, %d\n", ret, __LINE__);
 
         if (expect_ticket) {
             memmove(sbuf.base, sbuf.base + consumed, sbuf.off - consumed);
@@ -142,6 +147,7 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
             consumed = cbuf.off;
             /* receive Cert+CertVerify+FIN or receive FIN */
             ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
+            printf("ret of ptls_handshake(server) = %d, %d\n", ret, __LINE__);
 //            ok(ptls_handshake_is_complete(server));
             cbuf.off = 0;
         }
@@ -370,7 +376,7 @@ int main(int argc, char **argv)
 
     for (size_t i = 0; ret == 0 && i < nb_sig_list; i++) {
         if (sig_list[i].enabled_by_default || force_all_tests) {
-            ret = bench_tls(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name, 100000); /*options: 100000, 1000000, 1000*/
+            ret = bench_tls(OS, HW, basic_ref, sig_list[i].provider, sig_list[i].sig_name, 1); /*options: 100000, 1000000, 1000*/
         }
     }
 
