@@ -143,8 +143,10 @@ const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[] = {
     {PTLS_SIGNATURE_DILITHIUM5, NULL},
     {UINT16_MAX, NULL} /* Termination */
 };
-
-
+const ptls_openssl_signature_scheme_t hsig_signature_schemes[] = {
+    {PTLS_SIGNATURE_HSIG, NULL},
+    {UINT16_MAX, NULL}
+};
 
 
 /**
@@ -182,7 +184,7 @@ const ptls_openssl_signature_scheme_t *ptls_openssl_lookup_oqs_signature_schemes
     else if (strcmp(sig_name, "dilithium5") == 0)
         schemes = dilithium5_signature_schemes;
     else if (strcmp(sig_name, "hsig") == 0) /* assign whatever scheme to hsig */
-        schemes = dilithium5_signature_schemes;
+        schemes = hsig_signature_schemes;
     else
         fprintf(stderr, "Unknown oqs siganture scheme: %s\n", sig_name);
 
@@ -1040,6 +1042,33 @@ Exit:
 
 #endif
 
+/* do hsig sign ongoing... @xinshu
+ * client/server should provide the precomputed data*/
+static int do_hsig_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
+                       ptls_async_job_t **async)
+{
+    int ret;
+    PTLS_DEBUGF("[%s]: artificial do sign %d\n", __func__, __LINE__);
+    /* set outbuf with random value */
+    size_t siglen = 64; // mock ecdsa secp256r1
+    if ((ret = ptls_buffer_reserve(outbuf, siglen)) != 0)
+        goto Exit;
+
+    /* Mock ECDSA signature: fill r and s values with random bytes */
+    size_t half_len = siglen / 2;
+    if (RAND_bytes(outbuf->base + outbuf->off, half_len) != 1 ||  /* r */
+        RAND_bytes(outbuf->base + outbuf->off + half_len, half_len) != 1) {  /* s */
+        ret = PTLS_ERROR_LIBRARY;
+        goto Exit;
+    }
+    outbuf->off += siglen;
+
+    usleep(4); // sleep for 5 microseconds
+    ret = 0;
+Exit:
+    return ret;
+}
+
 /* do sign for artificial sig algo, sleep this function for 5 us*/
 static int do_art_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *scheme, ptls_buffer_t *outbuf, ptls_iovec_t input,
                        ptls_async_job_t **async)
@@ -1058,7 +1087,6 @@ static int do_art_sign(EVP_PKEY *key, const ptls_openssl_signature_scheme_t *sch
         ret = PTLS_ERROR_LIBRARY;
         goto Exit;
     }
-
     outbuf->off += siglen;
 
     usleep(4); // sleep for 5 microseconds
@@ -1780,6 +1808,8 @@ Exit:
     EVP_PKEY_free(key);
     return ret;
 }
+
+
 
 /* initiate oqs signature algo for signing operation */
 int ptls_openssl_init_oqs_sign_certificate(ptls_openssl_sign_certificate_t *self, EVP_PKEY *key, const char *sig_name)
