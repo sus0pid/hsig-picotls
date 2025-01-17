@@ -53,6 +53,8 @@ static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const c
 
     fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
+    int is_handshake_started = 0;
+
     while (1) {
         /* check if data is available */
         fd_set readfds, writefds, exceptfds;
@@ -82,8 +84,11 @@ static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const c
                 goto Exit;
             while ((leftlen = ioret - off) != 0) {
                 if (state == IN_HANDSHAKE) {
-                    printf("start process client hello\n");
-                    t_hs_start = bench_time();
+                    printf("start process handshake message\n");
+                    if (!is_handshake_started) {
+                        t_hs_start = bench_time();
+                        is_handshake_started = 1;
+                    }
                     if ((ret = ptls_handshake(tls, &encbuf, bytebuf + off, &leftlen, hsprop)) == 0) {
                         state = IN_1RTT;
                         fprintf(stderr, "Handshake completed\n");
