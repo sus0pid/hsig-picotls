@@ -29,6 +29,7 @@
 #include "picotls.h"
 #include "picotls/openssl.h"
 #include "utilities.h"
+#include "bench_common.h"
 
 static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const char *server_name, const char *input_file,
                                         ptls_handshake_properties_t *hsprop)
@@ -43,6 +44,8 @@ static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const c
     const char *hello_msg = "hello world\n";
     const size_t hello_msg_len = strlen(hello_msg);
     size_t reply_received = 0;
+    uint64_t t_hs_start, t_hs_end;
+    uint64_t t_server;
 
     ptls_buffer_init(&rbuf, "", 0);
     ptls_buffer_init(&encbuf, "", 0);
@@ -80,9 +83,13 @@ static int handle_connection_with_hello(int sockfd, ptls_context_t *ctx, const c
             while ((leftlen = ioret - off) != 0) {
                 if (state == IN_HANDSHAKE) {
                     printf("start process client hello\n");
+                    t_hs_start = bench_time();
                     if ((ret = ptls_handshake(tls, &encbuf, bytebuf + off, &leftlen, hsprop)) == 0) {
                         state = IN_1RTT;
                         fprintf(stderr, "Handshake completed\n");
+                        t_hs_end = bench_time();
+                        t_server = t_hs_end - t_hs_start;
+                        printf("Server handshake time cost: %.2f us\n", (double) t_server);
 
                         /* Send "hello world" message to client */
                         if ((ret = ptls_send(tls, &encbuf, hello_msg, hello_msg_len)) != 0) {
