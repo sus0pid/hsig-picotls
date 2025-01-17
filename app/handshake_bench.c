@@ -71,11 +71,11 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
             break;
         }
 
-        uint64_t t_c_start = bench_time();
         ptls_set_server_name(client, server_name, 0);
         /* send ClientHello */
+        uint64_t t_c_start = bench_time();
         ret = ptls_handshake(client, &cbuf, NULL, NULL, &client_hs_prop);
-        printf("ret of ptls_handshake(client) = %d, %d\n", ret, __LINE__);
+//        printf("ret of ptls_handshake(client) = %d, %d\n", ret, __LINE__);
 
         switch (mode) {
         case TEST_HANDSHAKE_2RTT:
@@ -100,11 +100,13 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
             break;
         }
 
-        uint64_t t_s_start = bench_time(); /* server receives client CH request */
+        uint64_t t_s_start, t_s_end;
+        t_s_start = bench_time(); /* server receives client CH request */
         consumed = cbuf.off;
         /* receive ClientHello and send ServerHello+EE+FIN */
         ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
-        printf("ret of ptls_handshake(server) = %d, %d\n", ret, __LINE__);
+        t_s_end = bench_time(); /* if single auth, server handshake ends here */
+//        printf("ret of ptls_handshake(server) = %d, %d\n", ret, __LINE__);
 
         if (mode == TEST_HANDSHAKE_EARLY_DATA && !require_client_authentication) {
             memmove(cbuf.base, cbuf.base + consumed, cbuf.off - consumed);
@@ -133,7 +135,8 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         /* receive ServerHello+EE+FIN
         * send Cert+CertVerify+FIN or send FIN*/
         ret = ptls_handshake(client, &cbuf, sbuf.base, &consumed, NULL);
-        printf("ret of ptls_handshake(client) = %d, %d\n", ret, __LINE__);
+        uint64_t t_c_end = bench_time(); /* client receives server's reply */
+//        printf("ret of ptls_handshake(client) = %d, %d\n", ret, __LINE__);
 
         if (expect_ticket) {
             memmove(sbuf.base, sbuf.base + consumed, sbuf.off - consumed);
@@ -147,11 +150,11 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
             consumed = cbuf.off;
             /* receive Cert+CertVerify+FIN or receive FIN */
             ret = ptls_handshake(server, &sbuf, cbuf.base, &consumed, &server_hs_prop);
-            printf("ret of ptls_handshake(server) = %d, %d\n", ret, __LINE__);
+            t_s_end = bench_time(); /* if mutual auth, server ends handshake here */
+//            printf("ret of ptls_handshake(server) = %d, %d\n", ret, __LINE__);
 //            ok(ptls_handshake_is_complete(server));
             cbuf.off = 0;
         }
-        uint64_t t_s_end = bench_time(); /* server receives client handshake message */
 
         /* holds the ptls_t pointer of server prior to migration */
         ptls_t *original_server = server;
@@ -178,7 +181,6 @@ static int bench_run_handshake(const char *server_name, ptls_iovec_t ticket, int
         consumed = sbuf.off;
         /* client receive server app data reply */
         ret = ptls_receive(client, &decbuf, sbuf.base, &consumed);
-        uint64_t t_c_end = bench_time(); /* client receives server's reply */
         decbuf.off = 0;
         sbuf.off = 0;
 
