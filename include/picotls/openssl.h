@@ -168,6 +168,7 @@ extern const ptls_openssl_signature_scheme_t ed25519_signature_schemes[];
 extern const ptls_openssl_signature_scheme_t dilithium2_signature_schemes[];
 extern const ptls_openssl_signature_scheme_t dilithium3_signature_schemes[];
 extern const ptls_openssl_signature_scheme_t dilithium5_signature_schemes[];
+extern const ptls_openssl_signature_scheme_t hsig_signature_schemes[];
 
 
 /**
