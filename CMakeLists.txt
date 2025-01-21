@@ -29,7 +29,10 @@ ENDIF ()
 OPTION(WITH_AEGIS "enable AEGIS (requires libaegis)" ${WITH_AEGIS})
 OPTION(WITH_MBEDTLS "enable MBEDTLS" ${WITH_MBEDTLS})
 
-SET(CMAKE_C_FLAGS "-std=c99 -Wall -O0 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
+# for debugging
+SET(CMAKE_C_FLAGS "-std=c99 -mavx512f -Wall -Wextra -O0 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
+# for production build with performance optimization
+#set(CMAKE_C_FLAGS "-std=c99 -mavx512f -Wall -Wextra -O3 ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
 
 INCLUDE_DIRECTORIES(
     deps/cifra/src/ext
@@ -60,6 +63,11 @@ SET(CORE_FILES
 SET(CORE_TEST_FILES
     t/hpke.c
     t/picotls.c)
+SET(BLAKE3_SRC
+    crypto/blake3.c
+
+)
+
 IF (WITH_DTRACE)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DPICOTLS_USE_DTRACE=1")
     DEFINE_DTRACE_DEPENDENCIES(${PROJECT_SOURCE_DIR}/picotls-probes.d picotls)
