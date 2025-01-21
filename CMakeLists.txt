@@ -30,7 +30,7 @@ OPTION(WITH_AEGIS "enable AEGIS (requires libaegis)" ${WITH_AEGIS})
 OPTION(WITH_MBEDTLS "enable MBEDTLS" ${WITH_MBEDTLS})
 
 # for debugging
-SET(CMAKE_C_FLAGS "-std=c99 -mavx512f -Wall -Wextra -O0 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
+SET(CMAKE_C_FLAGS "-std=c99 -Wall -Wextra -O0 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
 # for production build with performance optimization
 #set(CMAKE_C_FLAGS "-std=c99 -mavx512f -Wall -Wextra -O3 ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
 
@@ -63,9 +63,12 @@ SET(CORE_FILES
 SET(CORE_TEST_FILES
     t/hpke.c
     t/picotls.c)
-SET(BLAKE3_SRC
+SET(BLAKE_FILES
     crypto/blake3.c
-
+    crypto/blake3_avx512.c
+    crypto/blake3_avx512_x86-64_unix.S
+    crypto/blake3_dispatch.c
+    crypto/blake3_portable.c
 )
 
 IF (WITH_DTRACE)
@@ -93,6 +96,13 @@ ENDIF ()
 ADD_LIBRARY(picotls-core ${CORE_FILES})
 TARGET_LINK_LIBRARIES(picotls-core ${CORE_EXTRA_LIBS})
 TARGET_LINK_DIRECTORIES(picotls-core PUBLIC ${CORE_EXTRA_LIBS_DIRS})
+
+# test blake3
+ADD_LIBRARY(blake3 ${BLAKE_FILES})
+TARGET_COMPILE_OPTIONS(blake3 PRIVATE -mavx512f)
+TARGET_INCLUDE_DIRECTORIES(blake3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/crypto)
+ADD_EXECUTABLE(test_blake test/test-crypto/test_blake.c)
+TARGET_LINK_LIBRARIES(test_blake PRIVATE blake3)
 
 IF (WITH_AEGIS)
     SET(MINICRYPTO_AEGIS_FILES lib/cifra/libaegis.c)
@@ -165,7 +175,6 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     TARGET_LINK_LIBRARIES(hsig-server picotls-openssl picotls-core)
     ADD_EXECUTABLE(test-picotls-api app/test_picotls_api.c)
     TARGET_LINK_LIBRARIES(test-picotls-api picotls-openssl picotls-core)
-
 
 
     # for oqs sigalgo tests
@@ -246,6 +255,7 @@ IF (NOT WITH_FUSION)
     SET_TARGET_PROPERTIES(ptlsbench PROPERTIES EXCLUDE_FROM_ALL 1)
 ENDIF ()
 
+# benchmark authentication and handshake
 ADD_EXECUTABLE(auth_bench app/auth_bench.c app/oqs_util.c app/bench_common.c)
 TARGET_LINK_LIBRARIES(auth_bench ${PTLSBENCH_LIBS})
 ADD_EXECUTABLE(handshake_bench app/handshake_bench.c app/oqs_util.c app/bench_common.c)
