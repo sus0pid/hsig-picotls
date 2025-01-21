@@ -67,7 +67,6 @@ SET(BLAKE_FILES
     crypto/blake3.c
     crypto/blake3_avx512.c
     crypto/blake3_avx512_x86-64_unix.S
-    crypto/blake3_dispatch.c
     crypto/blake3_portable.c
 )
 
