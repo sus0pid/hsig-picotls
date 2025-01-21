@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "blake3.h"
-#include "blake3_impl.h"
+#include "internal/blake3_impl.h"
 
 const char *blake3_version(void) { return BLAKE3_VERSION_STRING; }
 
