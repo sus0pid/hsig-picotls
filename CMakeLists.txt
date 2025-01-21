@@ -65,9 +65,13 @@ SET(CORE_TEST_FILES
     t/picotls.c)
 SET(BLAKE_FILES
     crypto/blake3.c
-    crypto/blake3_avx512.c
-    crypto/blake3_avx512_x86-64_unix.S
-    crypto/blake3_portable.c
+    crypto/internal/blake3_avx512.c
+    crypto/internal/blake3_dispatch.c
+    crypto/internal/blake3_portable.c
+    crypto/internal/blake3_sse2_x86-64_unix.S
+    crypto/internal/blake3_sse41_x86-64_unix.S
+    crypto/internal/blake3_avx2_x86-64_unix.S
+    crypto/internal/blake3_avx512_x86-64_unix.S
 )
 
 IF (WITH_DTRACE)
